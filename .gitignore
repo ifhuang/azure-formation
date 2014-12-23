@@ -1,1 +1,6 @@
 .idea/
+*.cer
+*.pem
+*.pyc
+src/app/constants.py
+
