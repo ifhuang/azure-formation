@@ -2,5 +2,5 @@
 *.cer
 *.pem
 *.pyc
-src/app/constants.py
+src/app/credentials.py
 

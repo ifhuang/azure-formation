@@ -1,15 +1,16 @@
 __author__ = 'Yifu Huang'
 
-import constants
+import time
+import credentials
 from azure import *
 from azure.servicemanagement import *
 
 
 def connect():
     # Connect to service management
-    subscription_id = constants.SUBSCRIPTION_ID
-    certificate_path = constants.PEM_CERTIFICATE
-    host = constants.MANAGEMENT_HOST
+    subscription_id = credentials.SUBSCRIPTION_ID
+    certificate_path = credentials.PEM_CERTIFICATE
+    host = credentials.MANAGEMENT_HOST
     return ServiceManagementService(subscription_id, certificate_path, host)
 
 
@@ -129,16 +130,16 @@ def create_vm(sms):
         label=name,
         location=location)
     # Name of an os image as returned by list_os_images
-    image_name = 'abc'
+    image_name = credentials.IMAGE_NAME
     # Destination storage account container/blob where the VM disk
     # will be created
-    media_link = 'abc.vhd'
+    media_link = credentials.MEDIA_LINK
     # Linux VM configuration, you can use WindowsConfigurationSet
     # for a Windows VM instead
     linux_config = LinuxConfigurationSet('myhostname', 'myuser', 'myPassword)', True)
     os_hd = OSVirtualHardDisk(image_name, media_link)
     try:
-        sms.create_virtual_machine_deployment(service_name=name,
+        result = sms.create_virtual_machine_deployment(service_name=name,
             deployment_name=name,
             deployment_slot='production',
             label=name,
@@ -146,9 +147,64 @@ def create_vm(sms):
             system_config=linux_config,
             os_virtual_hard_disk=os_hd,
             role_size='Small')
+        _wait_for_async(sms, result.request_id)
+        _wait_for_deployment(sms, service_name=name, deployment_name=name)
+        _wait_for_role(sms, service_name=name, deployment_name=name, role_instance_name=name)
     except Exception as e:
         print('AZURE ERROR: %s' % str(e))
 
+
+def _wait_for_async(sms, request_id):
+    count = 0
+    result = sms.get_operation_status(request_id)
+    while result.status == 'InProgress':
+        print('_wait_for_async loop')
+        count = count + 1
+        if count > 120:
+            print ('Timed out waiting for async operation to complete.')
+        time.sleep(5)
+        result = sms.get_operation_status(request_id)
+    if result.status != 'Succeeded':
+        print(vars(result))
+        if result.error:
+            print(result.error.code)
+            print(vars(result.error))
+        print ('Asynchronous operation did not succeed.')
+
+
+def _wait_for_deployment(sms, service_name, deployment_name,
+                         status='Running'):
+    count = 0
+    props = sms.get_deployment_by_name(service_name, deployment_name)
+    while props.status != status:
+        print('_wait_for_deployment loop')
+        count = count + 1
+        if count > 120:
+            print ('Timed out waiting for deployment status.')
+        time.sleep(5)
+        props = sms.get_deployment_by_name(
+            service_name, deployment_name)
+
+
+def _wait_for_role(sms, service_name, deployment_name, role_instance_name,
+                   status='ReadyRole'):
+    count = 0
+    props = sms.get_deployment_by_name(service_name, deployment_name)
+    while _get_role_instance_status(props, role_instance_name) != status:
+        print('_wait_for_role loop')
+        count = count + 1
+        if count > 120:
+            print('Timed out waiting for role instance status.')
+        time.sleep(5)
+        props = sms.get_deployment_by_name(
+            service_name, deployment_name)
+
+
+def _get_role_instance_status(deployment, role_instance_name):
+    for role_instance in deployment.role_instance_list:
+        if role_instance.instance_name == role_instance_name:
+            return role_instance.instance_status
+    return None
 
 service_management_service = connect()
 #locations(service_management_service)
