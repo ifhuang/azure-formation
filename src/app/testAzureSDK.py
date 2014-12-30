@@ -2,8 +2,8 @@ __author__ = 'Yifu Huang'
 
 import time
 import credentials
-from azure import *
 from azure.servicemanagement import *
+from log import log
 
 
 def connect():
@@ -18,7 +18,7 @@ def locations(sms):
     # List available locations
     result = sms.list_locations()
     for location in result:
-        print(location.name)
+        log.debug(location.name)
 
 
 def services(sms):
@@ -207,7 +207,7 @@ def _get_role_instance_status(deployment, role_instance_name):
     return None
 
 service_management_service = connect()
-#locations(service_management_service)
+locations(service_management_service)
 #services(service_management_service)
 #create_service(service_management_service)
 #delete_service(service_management_service)
@@ -219,4 +219,4 @@ service_management_service = connect()
 #delete_group(service_management_service)
 #systems(service_management_service)
 #images(service_management_service)
-create_vm(service_management_service)
+#create_vm(service_management_service)
