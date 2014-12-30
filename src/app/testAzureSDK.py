@@ -206,8 +206,23 @@ def _get_role_instance_status(deployment, role_instance_name):
             return role_instance.instance_status
     return None
 
+
+def test_list_role_sizes(sms):
+    result = sms.list_role_sizes()
+    for role_size in result:
+        print('name: ' + role_size.name)
+        print('label: ' + role_size.label)
+        print('cores: ' + str(role_size.cores))
+        print('max_data_disk_count; ' + str(role_size.max_data_disk_count))
+        print('memory_in_mb: ' + str(role_size.memory_in_mb))
+        print('virtual_machine_resource_disk_size_in_mb: ' + str(role_size.virtual_machine_resource_disk_size_in_mb))
+        print('web_worker_resource_disk_size_in_mb: ' + str(role_size.web_worker_resource_disk_size_in_mb))
+        print('supported_by_virtual_machines: ' + str(role_size.supported_by_virtual_machines))
+        print('supported_by_web_worker_roles: ' + str(role_size.supported_by_web_worker_roles))
+
+
 service_management_service = connect()
-locations(service_management_service)
+#locations(service_management_service)
 #services(service_management_service)
 #create_service(service_management_service)
 #delete_service(service_management_service)
@@ -220,3 +235,4 @@ locations(service_management_service)
 #systems(service_management_service)
 #images(service_management_service)
 #create_vm(service_management_service)
+test_list_role_sizes(service_management_service)

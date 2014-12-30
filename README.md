@@ -21,9 +21,20 @@ sudo mkdir /var/log/azure-auto-deploy
 sudo chown $USER:$USER /var/log/azure-auto-deploy
 ```
 
+# MySQL
+
+```
+drop database azureautodeploy;
+create database azureautodeploy;
+create User 'azureautodeploy'@'localhost' IDENTIFIED by 'azureautodeploy';
+GRANT ALL on azureautodeploy.* TO 'azureautodeploy'@'localhost';
+```
+
+
 # Usage
 
 ```
 sudo pip install -r requirement.txt
+sudo python setup_db.py
 sudo python run.py
 ```
