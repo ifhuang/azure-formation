@@ -5,9 +5,14 @@ from database import *
 import os
 import commands
 from src.app.log import *
+from azure.servicemanagement import *
 
 
 class AzureImpl(CloudABC):
+    def __init__(self):
+        super(AzureImpl, self).__init__()
+        self.sms = None
+
     def register(self, name, email, subscription_id, management_host):
         user_info = super(AzureImpl, self).register(name, email)
         certificates_dir = os.path.abspath('certificates')
@@ -24,3 +29,7 @@ class AzureImpl(CloudABC):
         db.session.add(user_key)
         db.session.commit()
         return user_info
+
+    def connect(self, user_info):
+        user_key = UserKey.query.filter_by(user_info=user_info).first()
+        self.sms = ServiceManagementService(user_key.subscription_id, user_key.pem_url, user_key.management_host)

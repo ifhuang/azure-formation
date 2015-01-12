@@ -17,3 +17,7 @@ class CloudABC:
         db.session.add(user_info)
         db.session.commit()
         return user_info
+
+    @abstractmethod
+    def connect(self):
+        pass
