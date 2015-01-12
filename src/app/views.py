@@ -1,6 +1,7 @@
 __author__ = 'Yifu Huang'
 
-from app import app
+from src.app import app
+
 
 @app.route('/')
 def index():

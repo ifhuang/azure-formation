@@ -3,4 +3,4 @@ __author__ = 'Yifu Huang'
 from flask import Flask
 app = Flask(__name__)
 
-from app import views
+from src.app import views

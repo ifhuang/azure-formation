@@ -1,6 +1,6 @@
 __author__ = 'Yifu Huang'
 
-from app import app
+from src.app import app
 from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime
 from functions import *

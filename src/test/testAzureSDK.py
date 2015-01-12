@@ -1,9 +1,9 @@
 __author__ = 'Yifu Huang'
 
 import time
-import credentials
+from src.app import credentials
 from azure.servicemanagement import *
-from log import log
+from src.app import log
 
 
 def connect():
