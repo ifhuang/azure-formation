@@ -36,5 +36,7 @@ GRANT ALL on azureautodeploy.* TO 'azureautodeploy'@'localhost';
 ```
 sudo pip install -r requirement.txt
 sudo python setup_db.py
+sudo python create_test_data.py
+sudo python main.py
 sudo python run.py
 ```
