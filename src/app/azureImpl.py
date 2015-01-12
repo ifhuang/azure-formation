@@ -23,3 +23,4 @@ class AzureImpl(CloudABC):
         user_key = UserKey(user_info, cert_url, pem_url, subscription_id, management_host)
         db.session.add(user_key)
         db.session.commit()
+        return user_info
