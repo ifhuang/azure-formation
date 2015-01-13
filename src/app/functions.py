@@ -14,5 +14,5 @@ def get_config(key):
 
 
 def safe_get_config(key, default_value):
-    r= get_config(key)
+    r = get_config(key)
     return r if r is not None else default_value

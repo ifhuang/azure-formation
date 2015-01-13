@@ -111,17 +111,21 @@ class UserOperation(db.Model):
 class UserResource(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(50))
+    name = db.Column(db.String(50))
     status = db.Column(db.String(50))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
     user_info_id = db.Column(db.Integer, db.ForeignKey('user_info.id'))
     user_info = db.relationship('UserInfo', backref=db.backref('user_resource', lazy='dynamic'))
 
-    def __init__(self, user_info, type, status, create_time=None, exec_time=None):
-        if exec_time is None:
-            exec_time = datetime.utcnow()
+    def __init__(self, user_info, type, name, status, create_time=None, last_modify_time=None):
+        if create_time is None:
+            create_time = datetime.utcnow()
+        if last_modify_time is None:
+            last_modify_time = datetime.utcnow()
         self.user_info = user_info
         self.type = type
+        self.name = name
         self.status = status
         self.create_time = create_time
-        self.exec_time = exec_time
+        self.last_modify_time = last_modify_time

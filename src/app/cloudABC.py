@@ -2,6 +2,7 @@ __author__ = 'Yifu Huang'
 
 from abc import *
 from database import *
+from src.app.log import *
 
 
 class CloudABC:
@@ -13,11 +14,20 @@ class CloudABC:
 
     @abstractmethod
     def register(self, name, email):
-        user_info = UserInfo(name, email)
-        db.session.add(user_info)
-        db.session.commit()
+        user_info = UserInfo.query.filter_by(name=name, email=email).first()
+        # avoid duplicate user info
+        if user_info is None:
+            user_info = UserInfo(name, email)
+            db.session.add(user_info)
+            db.session.commit()
+        else:
+            log.debug('user info [%d] has registered' % user_info.id)
         return user_info
 
     @abstractmethod
     def connect(self):
+        pass
+
+    @abstractmethod
+    def create_vm(self):
         pass

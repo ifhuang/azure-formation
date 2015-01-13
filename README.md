@@ -10,8 +10,8 @@
 - Documentation: http://azure.microsoft.com/en-us/documentation/articles/cloud-services-python-how-to-use-service-management/
 
 # Preconditions
-- mycert.cer: upload to azure management portal
-- mycert.pem: save to local pc
+- certificates/xxx.cer: upload to azure management portal
+- certificates/xxx.pem: save to local pc
 - credentials.py: identify necessary constants
 
 # Configure Logs
