@@ -22,8 +22,7 @@ class AzureImpl(CloudABC):
         certificates_dir = os.path.abspath('certificates')
         # make sure certificate dir is exist
         if not os.path.isdir(certificates_dir):
-            log.error('% is not exist' % certificates_dir)
-            sys.exit(1)
+            os.mkdir(certificates_dir)
         base_url = '%s/%s-%s' % (certificates_dir, user_info.id, subscription_id)
         pem_url = base_url + '.pem'
         # avoid duplicate pem generation
