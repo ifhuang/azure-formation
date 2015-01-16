@@ -1,14 +1,14 @@
 __author__ = 'Yifu Huang'
 
 from src.app.cloudABC import CloudABC
-from database import *
-import os
-import commands
+from src.app.database import *
 from src.app.log import *
 from azure.servicemanagement import *
 import json
 import time
 import sys
+import os
+import commands
 
 
 class AzureImpl(CloudABC):

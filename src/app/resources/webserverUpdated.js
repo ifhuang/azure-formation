@@ -26,7 +26,7 @@
                 {
                     "name" : "ssh",
                     "protocol" : "tcp",
-                    "port" : "22",
+                    "port" : "50000",
                     "local_port" : "22"
                 },
                 {
@@ -37,6 +37,6 @@
                 }
             ]
         },
-        "role_size" : "Small"
+        "role_size" : "Medium"
     }
 }

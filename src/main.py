@@ -1,10 +1,12 @@
 __author__ = 'Yifu Huang'
 
+from src.app import credentials
 from src.app.azureImpl import AzureImpl
 from src.app.database import *
-import credentials
 from src.app.log import *
 import sys
+
+# this is how client execute
 
 a = AzureImpl()
 # create user info and key

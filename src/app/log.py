@@ -1,6 +1,6 @@
+from os.path import realpath, dirname
 import logging
 import logging.config
-from os.path import realpath, dirname
 
 
 class Log(object):

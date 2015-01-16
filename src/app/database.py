@@ -1,9 +1,9 @@
 __author__ = 'Yifu Huang'
 
 from src.app import app
+from src.app.functions import *
 from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime
-from functions import *
 
 app.config["SQLALCHEMY_DATABASE_URI"]= safe_get_config("mysql/connection", "mysql://root:root@localhost/azureautodeploy")
 db = SQLAlchemy(app)
