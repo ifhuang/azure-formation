@@ -31,3 +31,11 @@ a.connect(user_info)
 
 # create virtual machine
 a.create_vm(user_template)
+
+# update virtual machine
+updated = a.update_vm(user_template)
+log.debug(updated)
+
+# delete virtual machine
+deleted = a.delete_vm(user_template)
+log.debug(deleted)

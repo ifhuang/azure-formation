@@ -31,3 +31,11 @@ class CloudABC:
     @abstractmethod
     def create_vm(self):
         pass
+
+    @abstractmethod
+    def update_vm(self):
+        pass
+
+    @abstractmethod
+    def delete_vm(self):
+        pass

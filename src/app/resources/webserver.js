@@ -19,6 +19,24 @@
         "os_virtual_hard_disk" : {
             "source_image_name" : "webserver",
             "media_link" : "https://ossvhds.blob.core.chinacloudapi.cn/ossvhds/captured-webservice-os-2015-01-15.vhd"
-        }
+        },
+        "network_config" : {
+            "configuration_set_type" : "NetworkConfiguration",
+            "input_endpoints" : [
+                {
+                    "name" : "ssh",
+                    "protocol" : "tcp",
+                    "port" : "40000",
+                    "local_port" : "22"
+                },
+                {
+                    "name" : "http",
+                    "protocol" : "tcp",
+                    "port" : "80",
+                    "local_port" : "80"
+                }
+            ]
+        },
+        "role_size" : "Small"
     }
 }
