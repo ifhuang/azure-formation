@@ -25,17 +25,17 @@ class CloudABC:
         return user_info
 
     @abstractmethod
-    def connect(self):
+    def connect(self, user_info):
         pass
 
     @abstractmethod
-    def create_vm(self):
+    def create_vm(self, user_template):
         pass
 
     @abstractmethod
-    def update_vm(self):
+    def update_vm(self, user_template):
         pass
 
     @abstractmethod
-    def delete_vm(self):
+    def delete_vm(self, user_template):
         pass
