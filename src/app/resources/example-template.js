@@ -41,7 +41,7 @@
                     {
                         "name" : "http",
                         "protocol" : "tcp",
-                        "port" : "80",
+                        "port" : "800",
                         "local_port" : "80"
                     }
                 ]
@@ -56,9 +56,9 @@
             "role_name" : "yifu-test-role-name-2",
             "system_config" : {
                 "os_family" : "Windows",
-                "host_name" : "yifu-test-host-name-2",
-                "user_name" : "yifu-test-user-name-2",
-                "user_password" : "Yifu-Test-User-Password-2"
+                "host_name" : "yifutest2",
+                "user_name" : "yifutestuser2",
+                "user_password" : "Yifu-Test--2"
             },
             "os_virtual_hard_disk" : {
                 "source_image_name" : "0c5c79005aae478e8883bf950a861ce0__Windows-Server-2012-Essentials-20131018-enus",
@@ -71,7 +71,7 @@
                     {
                         "name" : "http",
                         "protocol" : "tcp",
-                        "port" : "82",
+                        "port" : "80",
                         "local_port" : "80"
                     }
                 ]

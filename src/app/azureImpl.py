@@ -31,7 +31,7 @@ class AzureImpl(CloudABC):
         :return: user info
         """
         user_info = super(AzureImpl, self).register(name, email)
-        certificates_dir = os.path.abspath('app/certificates')
+        certificates_dir = os.path.abspath('certificates')
         # make sure certificate dir is exist
         if not os.path.isdir(certificates_dir):
             os.mkdir(certificates_dir)
@@ -456,6 +456,8 @@ class AzureImpl(CloudABC):
                 config = WindowsConfigurationSet(computer_name=system_config['host_name'],
                                                  admin_password=system_config['user_password'],
                                                  admin_username=system_config['user_name'])
+                config.domain_join = None
+                config.win_rm = None
             else:
                 config = LinuxConfigurationSet(system_config['host_name'], system_config['user_name'],
                                                system_config['user_password'], False)
