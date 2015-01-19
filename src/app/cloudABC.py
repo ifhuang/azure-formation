@@ -29,13 +29,13 @@ class CloudABC:
         pass
 
     @abstractmethod
-    def create_vm(self, user_template):
+    def create(self, user_template):
         pass
 
     @abstractmethod
-    def update_vm(self, user_template):
+    def update(self, user_template):
         pass
 
     @abstractmethod
-    def delete_vm(self, user_template):
+    def delete(self, user_template):
         pass

@@ -33,18 +33,17 @@ for template in templates:
 connected = a.connect(user_info)
 log.debug('connect: %s' % connected)
 
-
 user_template = UserTemplate.query.filter_by(id=1).first()
 # create virtual machine
-created = a.create_vm(user_template)
-log.debug('create_vm: %s' % created)
+created = a.create(user_template)
+log.debug('create: %s' % created)
 
 user_template = UserTemplate.query.filter_by(id=2).first()
 # update virtual machine
-updated = a.update_vm(user_template)
-log.debug('update_vm: %s' % updated)
+updated = a.update(user_template)
+log.debug('update: %s' % updated)
 
 user_template = UserTemplate.query.filter_by(id=1).first()
 # delete virtual machine
-deleted = a.delete_vm(user_template)
-log.debug('delete_vm: %s' % deleted)
+deleted = a.delete(user_template)
+log.debug('delete: %s' % deleted)

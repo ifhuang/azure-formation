@@ -6,9 +6,9 @@ from src.app.log import *
 from azure.servicemanagement import *
 import json
 import time
-import sys
 import os
 import commands
+import datetime
 
 
 class AzureImpl(CloudABC):
@@ -16,6 +16,8 @@ class AzureImpl(CloudABC):
     def __init__(self):
         super(AzureImpl, self).__init__()
         self.sms = None
+        self.user_template = None
+        self.template_config = None
 
     def register(self, name, email, subscription_id, management_host):
         """
@@ -29,7 +31,7 @@ class AzureImpl(CloudABC):
         :return: user info
         """
         user_info = super(AzureImpl, self).register(name, email)
-        certificates_dir = os.path.abspath('certificates')
+        certificates_dir = os.path.abspath('app/certificates')
         # make sure certificate dir is exist
         if not os.path.isdir(certificates_dir):
             os.mkdir(certificates_dir)
@@ -77,229 +79,89 @@ class AzureImpl(CloudABC):
             return False
         return True
 
-    def create_vm(self, user_template):
+    def create(self, user_template):
         """
         Create a virtual machine according to given user template (assume all fields needed are in template)
-        1. If cloud service is not exist, then create it
-        2. If deployment is not exist, then create a virtual machine with deployment, else add a virtual machine to
+        1. If storage account is not exist, then create it
+        2. If cloud service is not exist, then create it
+        3. If deployment is not exist, then create a virtual machine with deployment, else add a virtual machine to
         deployment
         Currently support only Linux
         :param user_template:
         :return: Whether a virtual machine is created
         """
-        # make sure template url is exist
-        if os.path.isfile(user_template.template.url):
-            try:
-                template_config = json.load(file(user_template.template.url))
-            except Exception as e:
-                log.debug('ugly json format: %s' % e)
-                return False
-        else:
-            log.debug('%s is not exist' % user_template.template.url)
+        if not self._load_template(user_template):
             return False
-        cloud_service = template_config['cloud_service']
-        # avoid duplicate cloud service
-        if not self._hosted_service_exists(cloud_service['service_name']):
-            user_operation = UserOperation(user_template, 'create_hosted_service', 'start')
-            db.session.add(user_operation)
-            db.session.commit()
-            try:
-                self.sms.create_hosted_service(service_name=cloud_service['service_name'], label=cloud_service['label'],
-                                               location=cloud_service['location'])
-            except Exception as e:
-                user_operation = UserOperation(user_template, 'create_hosted_service', 'fail')
-                db.session.add(user_operation)
-                db.session.commit()
-                log.debug(e)
-                return False
-            user_operation = UserOperation(user_template, 'create_hosted_service', 'end')
-            db.session.add(user_operation)
-            db.session.commit()
-            # make sure cloud service is created
-            if self._hosted_service_exists(cloud_service['service_name']):
-                user_resource = UserResource(user_template.user_info, 'cloud service', cloud_service['service_name'],
-                                             'Running')
-                db.session.add(user_resource)
-                db.session.commit()
-            else:
-                log.debug('cannot create cloud service %s' % cloud_service['service_name'])
-                return False
-        else:
-            log.debug('cloud service %s is exist' % cloud_service['service_name'])
-        virtual_machine = template_config['virtual_machine']
-        system_config = virtual_machine['system_config']
-        linux_config = LinuxConfigurationSet(system_config['host_name'], system_config['user_name'],
-                                             system_config['user_password'], False)
-        os_virtual_hard_disk = virtual_machine['os_virtual_hard_disk']
-        os_hd = OSVirtualHardDisk(os_virtual_hard_disk['source_image_name'], os_virtual_hard_disk['media_link'])
-        network_config = virtual_machine['network_config']
-        network = ConfigurationSet()
-        network.configuration_set_type = network_config['configuration_set_type']
-        input_endpoints = network_config['input_endpoints']
-        for input_endpoint in input_endpoints:
-            network.input_endpoints.input_endpoints.append(ConfigurationSetInputEndpoint(input_endpoint['name'],
-                                                                                         input_endpoint['protocol'],
-                                                                                         input_endpoint['port'],
-                                                                                         input_endpoint['local_port']))
-        # avoid duplicate deployment
-        if self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
-            log.debug('deployment %s is exist' % virtual_machine['deployment_name'])
-            # avoid duplicate role
-            if self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                 virtual_machine['role_name']):
-                log.debug('virtual machine %s is exist' % virtual_machine['role_name'])
-            else:
-                user_operation = UserOperation(user_template, 'add_role', 'start')
-                db.session.add(user_operation)
-                db.session.commit()
-                try:
-                    result = self.sms.add_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                               virtual_machine['role_name'], linux_config, os_hd,
-                                               network_config=network, role_size=virtual_machine['role_size'])
-                except Exception as e:
-                    user_operation = UserOperation(user_template, 'add_role', 'fail')
-                    db.session.add(user_operation)
-                    db.session.commit()
-                    log.debug(e)
-                    return False
-                self._wait_for_async(result.request_id)
-                user_operation = UserOperation(user_template, 'add_role', 'end')
-                db.session.add(user_operation)
-                db.session.commit()
-                # make sure role is ready
-                if self._wait_for_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                       virtual_machine['role_name']):
-                    user_resource = UserResource(user_template.user_info, 'virtual machine',
-                                                 virtual_machine['role_name'], 'Running')
-                    db.session.add(user_resource)
-                    db.session.commit()
-                else:
-                    log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
-                    return False
-        else:
-            user_operation = UserOperation(user_template, 'create_virtual_machine_deployment_deployment', 'start')
-            db.session.add(user_operation)
-            db.session.commit()
-            user_operation = UserOperation(user_template, 'create_virtual_machine_deployment_role', 'start')
-            db.session.add(user_operation)
-            db.session.commit()
-            try:
-                result = self.sms.create_virtual_machine_deployment(virtual_machine['service_name'],
-                                                                    virtual_machine['deployment_name'],
-                                                                    virtual_machine['deployment_slot'],
-                                                                    virtual_machine['label'],
-                                                                    virtual_machine['role_name'],
-                                                                    linux_config,
-                                                                    os_hd,
-                                                                    network_config=network,
-                                                                    role_size=virtual_machine['role_size'])
-            except Exception as e:
-                user_operation = UserOperation(user_template, 'create_virtual_machine_deployment_deployment', 'fail')
-                db.session.add(user_operation)
-                db.session.commit()
-                user_operation = UserOperation(user_template, 'create_virtual_machine_deployment_role', 'fail')
-                db.session.add(user_operation)
-                db.session.commit()
-                log.debug(e)
-                return False
-            self._wait_for_async(result.request_id)
-            user_operation = UserOperation(user_template, 'create_virtual_machine_deployment_deployment', 'end')
-            db.session.add(user_operation)
-            db.session.commit()
-            user_operation = UserOperation(user_template, 'create_virtual_machine_deployment_role', 'end')
-            db.session.add(user_operation)
-            db.session.commit()
-            # make sure deployment is running
-            if self._wait_for_deployment(virtual_machine['service_name'], virtual_machine['deployment_name']):
-                user_resource = UserResource(user_template.user_info, 'deployment', virtual_machine['deployment_name'],
-                                             'Running')
-                db.session.add(user_resource)
-                db.session.commit()
-            else:
-                log.debug('%s is not running' % virtual_machine['deployment_name'])
-                return False
-            # make sure role is ready
-            if self._wait_for_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                   virtual_machine['role_name']):
-                user_resource = UserResource(user_template.user_info, 'virtual machine', virtual_machine['role_name'],
-                                             'Running')
-                db.session.add(user_resource)
-                db.session.commit()
-            else:
-                log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
-                return False
+        if not self._create_storage_account():
+            return False
+        if not self._create_cloud_service():
+            return False
+        if not self._create_virtual_machines():
+            return False
         return True
 
-    def update_vm(self, user_template):
+    def update(self, user_template):
         """
         Update a virtual machine according to given user template (assume all fields needed are in template)
         Currently support only network config and role size
         :param user_template:
         :return: Whether a virtual machine is updated
         """
-        # make sure template url is exist
-        if os.path.isfile(user_template.template.url):
-            try:
-                template_config = json.load(file(user_template.template.url))
-            except Exception as e:
-                log.debug('ugly json format: %s' % e)
-                return False
-        else:
-            log.debug('%s is not exist' % user_template.template.url)
+        if not self._load_template(user_template):
             return False
-        cloud_service = template_config['cloud_service']
+        cloud_service = self.template_config['cloud_service']
         # make sure cloud service is exist
         if not self._hosted_service_exists(cloud_service['service_name']):
             log.debug('cloud service %s is not exist' % cloud_service['service_name'])
             return False
-        virtual_machine = template_config['virtual_machine']
-        # make sure deployment is exist
-        if not self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
-            log.debug('deployment %s is not exist' % virtual_machine['deployment_name'])
-            return False
-        # make sure virtual machine is exist
-        if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                 virtual_machine['role_name']):
-            log.debug('virtual machine %s is not exist' % virtual_machine['role_name'])
-            return False
-        network_config = virtual_machine['network_config']
-        network = ConfigurationSet()
-        network.configuration_set_type = network_config['configuration_set_type']
-        input_endpoints = network_config['input_endpoints']
-        for input_endpoint in input_endpoints:
-            network.input_endpoints.input_endpoints.append(ConfigurationSetInputEndpoint(input_endpoint['name'],
-                                                                                         input_endpoint['protocol'],
-                                                                                         input_endpoint['port'],
-                                                                                         input_endpoint['local_port']))
-        user_operation = UserOperation(user_template, 'update_role', 'start')
-        db.session.add(user_operation)
-        db.session.commit()
-        try:
-            result = self.sms.update_role(cloud_service['service_name'], virtual_machine['deployment_name'],
-                                          virtual_machine['role_name'], network_config=network,
-                                          role_size=virtual_machine['role_size'])
-        except Exception as e:
-            user_operation = UserOperation(user_template, 'update_role', 'fail')
+        virtual_machines = self.template_config['virtual_machines']
+        for virtual_machine in virtual_machines:
+            # make sure deployment is exist
+            if not self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
+                log.debug('deployment %s is not exist' % virtual_machine['deployment_name'])
+                return False
+            # make sure virtual machine is exist
+            if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                     virtual_machine['role_name']):
+                log.debug('virtual machine %s is not exist' % virtual_machine['role_name'])
+                return False
+            network_config = virtual_machine['network_config']
+            network = ConfigurationSet()
+            network.configuration_set_type = network_config['configuration_set_type']
+            input_endpoints = network_config['input_endpoints']
+            for input_endpoint in input_endpoints:
+                network.input_endpoints.input_endpoints.append(
+                    ConfigurationSetInputEndpoint(input_endpoint['name'], input_endpoint['protocol'],
+                                                  input_endpoint['port'], input_endpoint['local_port']))
+            user_operation = UserOperation(user_template, 'update_role', 'start')
             db.session.add(user_operation)
             db.session.commit()
-            log.debug(e)
-            return False
-        self._wait_for_async(result.request_id)
-        user_operation = UserOperation(user_template, 'update_role', 'end')
-        db.session.add(user_operation)
-        db.session.commit()
-        self._wait_for_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                            virtual_machine['role_name'])
-        role = self.sms.get_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                 virtual_machine['role_name'])
-        # make sure virtual machine is updated
-        if role.role_size != virtual_machine['role_size'] or not self._cmp_network_config(role.configuration_sets,
-                                                                                          network):
-            log.debug('update virtual machine %s is failed' % virtual_machine['role_name'])
-            return False
+            try:
+                result = self.sms.update_role(cloud_service['service_name'], virtual_machine['deployment_name'],
+                                              virtual_machine['role_name'], network_config=network,
+                                              role_size=virtual_machine['role_size'])
+            except Exception as e:
+                user_operation = UserOperation(user_template, 'update_role', 'fail')
+                db.session.add(user_operation)
+                db.session.commit()
+                log.debug(e)
+                return False
+            self._wait_for_async(result.request_id)
+            user_operation = UserOperation(user_template, 'update_role', 'end')
+            db.session.add(user_operation)
+            db.session.commit()
+            self._wait_for_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                virtual_machine['role_name'])
+            role = self.sms.get_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                     virtual_machine['role_name'])
+            # make sure virtual machine is updated
+            if role.role_size != virtual_machine['role_size'] or not self._cmp_network_config(role.configuration_sets,
+                                                                                              network):
+                log.debug('update virtual machine %s is failed' % virtual_machine['role_name'])
+                return False
         return True
 
-    def delete_vm(self, user_template):
+    def delete(self, user_template):
         """
         Delete a virtual machine according to given user template (assume all fields needed are in template)
         If deployment has only a virtual machine, then delete a virtual machine with deployment, else delete a virtual
@@ -307,109 +169,102 @@ class AzureImpl(CloudABC):
         :param user_template:
         :return: Whether a virtual machine is deleted
         """
-        # make sure template url is exist
-        if os.path.isfile(user_template.template.url):
-            try:
-                template_config = json.load(file(user_template.template.url))
-            except Exception as e:
-                log.debug('ugly json format: %s' % e)
-                return False
-        else:
-            log.debug('%s is not exist' % user_template.template.url)
+        if not self._load_template(user_template):
             return False
-        cloud_service = template_config['cloud_service']
+        cloud_service = self.template_config['cloud_service']
         # make sure cloud service is exist
         if not self._hosted_service_exists(cloud_service['service_name']):
             log.debug('cloud service %s is not exist' % cloud_service['service_name'])
             return False
-        virtual_machine = template_config['virtual_machine']
-        # make sure deployment is exist
-        if not self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
-            log.debug('deployment %s is not exist' % virtual_machine['deployment_name'])
-            return False
-        # make sure virtual machine is exist
-        if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                 virtual_machine['role_name']):
-            log.debug('virtual machine %s is not exist' % virtual_machine['role_name'])
-            return False
-        deployment = self.sms.get_deployment_by_name(virtual_machine['service_name'],
-                                                     virtual_machine['deployment_name'])
-        # whether only one virtual machine in deployment
-        if len(deployment.role_instance_list) == 1:
-            user_operation = UserOperation(user_template, 'delete_deployment_deployment', 'start')
-            db.session.add(user_operation)
-            db.session.commit()
-            user_operation = UserOperation(user_template, 'delete_deployment_role', 'start')
-            db.session.add(user_operation)
-            db.session.commit()
-            try:
-                result = self.sms.delete_deployment(virtual_machine['service_name'],
-                                                    virtual_machine['deployment_name'])
-            except Exception as e:
-                user_operation = UserOperation(user_template, 'delete_deployment_deployment', 'fail')
-                db.session.add(user_operation)
-                db.session.commit()
-                user_operation = UserOperation(user_template, 'delete_deployment_role', 'fail')
-                db.session.add(user_operation)
-                db.session.commit()
-                log.debug(e)
-                return False
-            self._wait_for_async(result.request_id)
-            user_operation = UserOperation(user_template, 'delete_deployment_deployment', 'end')
-            db.session.add(user_operation)
-            db.session.commit()
-            user_operation = UserOperation(user_template, 'delete_deployment_role', 'end')
-            db.session.add(user_operation)
-            db.session.commit()
-            # make sure deployment is not exist
+        virtual_machines = self.template_config['virtual_machines']
+        for virtual_machine in virtual_machines:
+            # make sure deployment is exist
             if not self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
-                user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
-                                                             type='deployment',
-                                                             name=virtual_machine['deployment_name']).first()
-                user_resource.status = 'Deleted'
-                db.session.commit()
-            else:
-                log.debug('delete virtual machine %s failed' % virtual_machine['role_name'])
+                log.debug('deployment %s is not exist' % virtual_machine['deployment_name'])
                 return False
-            # make sure virtual machine is not exist
+            # make sure virtual machine is exist
             if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
                                      virtual_machine['role_name']):
-                user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
-                                                             type='virtual machine',
-                                                             name=virtual_machine['role_name']).first()
-                user_resource.status = 'Deleted'
-                db.session.commit()
-            else:
-                log.debug('delete virtual machine %s failed' % virtual_machine['role_name'])
+                log.debug('virtual machine %s is not exist' % virtual_machine['role_name'])
                 return False
-        else:
-            user_operation = UserOperation(user_template, 'delete_role', 'start')
-            db.session.add(user_operation)
-            db.session.commit()
-            try:
-                result = self.sms.delete_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                              virtual_machine['role_name'])
-            except Exception as e:
-                user_operation = UserOperation(user_template, 'delete_role', 'fail')
+            deployment = self.sms.get_deployment_by_name(virtual_machine['service_name'],
+                                                         virtual_machine['deployment_name'])
+            # whether only one virtual machine in deployment
+            if len(deployment.role_instance_list) == 1:
+                user_operation = UserOperation(user_template, 'delete_deployment_deployment', 'start')
                 db.session.add(user_operation)
                 db.session.commit()
-                log.debug(e)
-                return False
-            self._wait_for_async(result.request_id)
-            user_operation = UserOperation(user_template, 'delete_role', 'end')
-            db.session.add(user_operation)
-            db.session.commit()
-            # make sure virtual machine is not exist
-            if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
-                                     virtual_machine['role_name']):
-                user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
-                                                             type='virtual machine',
-                                                             name=virtual_machine['role_name']).first()
-                user_resource.status = 'Deleted'
+                user_operation = UserOperation(user_template, 'delete_deployment_role', 'start')
+                db.session.add(user_operation)
                 db.session.commit()
+                try:
+                    result = self.sms.delete_deployment(virtual_machine['service_name'],
+                                                        virtual_machine['deployment_name'])
+                except Exception as e:
+                    user_operation = UserOperation(user_template, 'delete_deployment_deployment', 'fail')
+                    db.session.add(user_operation)
+                    db.session.commit()
+                    user_operation = UserOperation(user_template, 'delete_deployment_role', 'fail')
+                    db.session.add(user_operation)
+                    db.session.commit()
+                    log.debug(e)
+                    return False
+                self._wait_for_async(result.request_id)
+                user_operation = UserOperation(user_template, 'delete_deployment_deployment', 'end')
+                db.session.add(user_operation)
+                db.session.commit()
+                user_operation = UserOperation(user_template, 'delete_deployment_role', 'end')
+                db.session.add(user_operation)
+                db.session.commit()
+                # make sure deployment is not exist
+                if not self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
+                    user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
+                                                                 type='deployment',
+                                                                 name=virtual_machine['deployment_name']).first()
+                    user_resource.status = 'Deleted'
+                    db.session.commit()
+                else:
+                    log.debug('delete virtual machine %s failed' % virtual_machine['role_name'])
+                    return False
+                # make sure virtual machine is not exist
+                if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                         virtual_machine['role_name']):
+                    user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
+                                                                 type='virtual machine',
+                                                                 name=virtual_machine['role_name']).first()
+                    user_resource.status = 'Deleted'
+                    db.session.commit()
+                else:
+                    log.debug('delete virtual machine %s failed' % virtual_machine['role_name'])
+                    return False
             else:
-                log.debug('delete virtual machine %s failed' % virtual_machine['role_name'])
-                return False
+                user_operation = UserOperation(user_template, 'delete_role', 'start')
+                db.session.add(user_operation)
+                db.session.commit()
+                try:
+                    result = self.sms.delete_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                                  virtual_machine['role_name'])
+                except Exception as e:
+                    user_operation = UserOperation(user_template, 'delete_role', 'fail')
+                    db.session.add(user_operation)
+                    db.session.commit()
+                    log.debug(e)
+                    return False
+                self._wait_for_async(result.request_id)
+                user_operation = UserOperation(user_template, 'delete_role', 'end')
+                db.session.add(user_operation)
+                db.session.commit()
+                # make sure virtual machine is not exist
+                if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                         virtual_machine['role_name']):
+                    user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
+                                                                 type='virtual machine',
+                                                                 name=virtual_machine['role_name']).first()
+                    user_resource.status = 'Deleted'
+                    db.session.commit()
+                else:
+                    log.debug('delete virtual machine %s failed' % virtual_machine['role_name'])
+                    return False
         return True
 
     # --------------------------------------------helper function-------------------------------------------- #
@@ -508,3 +363,207 @@ class AzureImpl(CloudABC):
                         return False
                 return True
         return False
+
+    def _load_template(self, user_template):
+        self.user_template = user_template
+        # make sure template url is exist
+        if os.path.isfile(user_template.template.url):
+            try:
+                self.template_config = json.load(file(user_template.template.url))
+            except Exception as e:
+                log.debug('ugly json format: %s' % e)
+                return False
+        else:
+            log.debug('%s is not exist' % user_template.template.url)
+            return False
+        return True
+
+    def _create_storage_account(self):
+        storage_account = self.template_config['storage_account']
+        # avoid duplicate storage account
+        try:
+            storage = self.sms.check_storage_account_name_availability(storage_account['service_name'])
+        except Exception as e:
+            log.debug(e)
+            return False
+        if storage.result:
+            user_operation = UserOperation(self.user_template, 'create_storage_account', 'start')
+            db.session.add(user_operation)
+            db.session.commit()
+            try:
+                self.sms.create_storage_account(storage_account['service_name'], storage_account['description'],
+                                                storage_account['label'], location=storage_account['location'])
+            except Exception as e:
+                user_operation = UserOperation(self.user_template, 'create_storage_account', 'fail')
+                db.session.add(user_operation)
+                db.session.commit()
+                log.debug(e)
+                return False
+            user_operation = UserOperation(self.user_template, 'create_storage_account', 'end')
+            db.session.add(user_operation)
+            db.session.commit()
+            # make sure storage account is created
+            if self.sms.check_storage_account_name_availability(storage_account['service_name']):
+                    user_resource = UserResource(self.user_template.user_info, 'storage account',
+                                                 storage_account['service_name'], 'Running')
+                    db.session.add(user_resource)
+                    db.session.commit()
+            else:
+                    log.debug('cannot create storage account %s' % storage_account['service_name'])
+                    return False
+        else:
+            log.debug('storage account %s is exist' % storage_account['service_name'])
+        return True
+
+    def _create_cloud_service(self):
+        cloud_service = self.template_config['cloud_service']
+        # avoid duplicate cloud service
+        if not self._hosted_service_exists(cloud_service['service_name']):
+            user_operation = UserOperation(self.user_template, 'create_hosted_service', 'start')
+            db.session.add(user_operation)
+            db.session.commit()
+            try:
+                self.sms.create_hosted_service(service_name=cloud_service['service_name'], label=cloud_service['label'],
+                                               location=cloud_service['location'])
+            except Exception as e:
+                user_operation = UserOperation(self.user_template, 'create_hosted_service', 'fail')
+                db.session.add(user_operation)
+                db.session.commit()
+                log.debug(e)
+                return False
+            user_operation = UserOperation(self.user_template, 'create_hosted_service', 'end')
+            db.session.add(user_operation)
+            db.session.commit()
+            # make sure cloud service is created
+            if self._hosted_service_exists(cloud_service['service_name']):
+                user_resource = UserResource(self.user_template.user_info, 'cloud service',
+                                             cloud_service['service_name'], 'Running')
+                db.session.add(user_resource)
+                db.session.commit()
+            else:
+                log.debug('cannot create cloud service %s' % cloud_service['service_name'])
+                return False
+        else:
+            log.debug('cloud service %s is exist' % cloud_service['service_name'])
+        return True
+
+    def _create_virtual_machines(self):
+        virtual_machines = self.template_config['virtual_machines']
+        storage_account = self.template_config['storage_account']
+        for virtual_machine in virtual_machines:
+            system_config = virtual_machine['system_config']
+            if system_config['os_family'] == 'Windows':
+                config = WindowsConfigurationSet(computer_name=system_config['host_name'],
+                                                 admin_password=system_config['user_password'],
+                                                 admin_username=system_config['user_name'])
+            else:
+                config = LinuxConfigurationSet(system_config['host_name'], system_config['user_name'],
+                                               system_config['user_password'], False)
+            os_virtual_hard_disk = virtual_machine['os_virtual_hard_disk']
+            now = datetime.datetime.now()
+            blob = '%s-%s-%s-%s-%s-%s-%s.vhd' % (os_virtual_hard_disk['source_image_name'], str(now.year),
+                                                 str(now.month), str(now.day), str(now.hour), str(now.minute),
+                                                 str(now.second))
+            media_link = 'https://%s.%s/%s/%s' % (storage_account['service_name'],
+                                                  os_virtual_hard_disk['media_link_base'],
+                                                  os_virtual_hard_disk['media_link_container'], blob)
+            os_hd = OSVirtualHardDisk(os_virtual_hard_disk['source_image_name'], media_link)
+            network_config = virtual_machine['network_config']
+            network = ConfigurationSet()
+            network.configuration_set_type = network_config['configuration_set_type']
+            input_endpoints = network_config['input_endpoints']
+            for input_endpoint in input_endpoints:
+                network.input_endpoints.input_endpoints.append(
+                    ConfigurationSetInputEndpoint(input_endpoint['name'], input_endpoint['protocol'],
+                                                  input_endpoint['port'], input_endpoint['local_port']))
+            # avoid duplicate deployment
+            if self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
+                log.debug('deployment %s is exist' % virtual_machine['deployment_name'])
+                # avoid duplicate role
+                if self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                     virtual_machine['role_name']):
+                    log.debug('virtual machine %s is exist' % virtual_machine['role_name'])
+                else:
+                    user_operation = UserOperation(self.user_template, 'add_role', 'start')
+                    db.session.add(user_operation)
+                    db.session.commit()
+                    try:
+                        result = self.sms.add_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                                   virtual_machine['role_name'], config, os_hd,
+                                                   network_config=network, role_size=virtual_machine['role_size'])
+                    except Exception as e:
+                        user_operation = UserOperation(self.user_template, 'add_role', 'fail')
+                        db.session.add(user_operation)
+                        db.session.commit()
+                        log.debug(e)
+                        return False
+                    self._wait_for_async(result.request_id)
+                    user_operation = UserOperation(self.user_template, 'add_role', 'end')
+                    db.session.add(user_operation)
+                    db.session.commit()
+                    # make sure role is ready
+                    if self._wait_for_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                           virtual_machine['role_name']):
+                        user_resource = UserResource(self.user_template.user_info, 'virtual machine',
+                                                     virtual_machine['role_name'], 'Running')
+                        db.session.add(user_resource)
+                        db.session.commit()
+                    else:
+                        log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
+                        return False
+            else:
+                user_operation = UserOperation(self.user_template, 'create_virtual_machine_deployment_deployment',
+                                               'start')
+                db.session.add(user_operation)
+                db.session.commit()
+                user_operation = UserOperation(self.user_template, 'create_virtual_machine_deployment_role', 'start')
+                db.session.add(user_operation)
+                db.session.commit()
+                try:
+                    result = self.sms.create_virtual_machine_deployment(virtual_machine['service_name'],
+                                                                        virtual_machine['deployment_name'],
+                                                                        virtual_machine['deployment_slot'],
+                                                                        virtual_machine['label'],
+                                                                        virtual_machine['role_name'],
+                                                                        config,
+                                                                        os_hd,
+                                                                        network_config=network,
+                                                                        role_size=virtual_machine['role_size'])
+                except Exception as e:
+                    user_operation = UserOperation(self.user_template, 'create_virtual_machine_deployment_deployment',
+                                                   'fail')
+                    db.session.add(user_operation)
+                    db.session.commit()
+                    user_operation = UserOperation(self.user_template, 'create_virtual_machine_deployment_role', 'fail')
+                    db.session.add(user_operation)
+                    db.session.commit()
+                    log.debug(e)
+                    return False
+                self._wait_for_async(result.request_id)
+                user_operation = UserOperation(self.user_template, 'create_virtual_machine_deployment_deployment',
+                                               'end')
+                db.session.add(user_operation)
+                db.session.commit()
+                user_operation = UserOperation(self.user_template, 'create_virtual_machine_deployment_role', 'end')
+                db.session.add(user_operation)
+                db.session.commit()
+                # make sure deployment is running
+                if self._wait_for_deployment(virtual_machine['service_name'], virtual_machine['deployment_name']):
+                    user_resource = UserResource(self.user_template.user_info, 'deployment',
+                                                 virtual_machine['deployment_name'], 'Running')
+                    db.session.add(user_resource)
+                    db.session.commit()
+                else:
+                    log.debug('%s is not running' % virtual_machine['deployment_name'])
+                    return False
+                # make sure role is ready
+                if self._wait_for_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
+                                       virtual_machine['role_name']):
+                    user_resource = UserResource(self.user_template.user_info, 'virtual machine',
+                                                 virtual_machine['role_name'], 'Running')
+                    db.session.add(user_resource)
+                    db.session.commit()
+                else:
+                    log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
+                    return False
+        return True
