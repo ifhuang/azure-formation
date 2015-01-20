@@ -1,7 +1,7 @@
 {
     "_comment" : "cloud_service.service_name == virtual_machines[i].service_name",
     "storage_account" : {
-        "service_name" : "ossvhds",
+        "service_name" : "yifu0storage",
         "description" : "yifu-test-description",
         "label" : "yifu-test-label",
         "location" : "China East"
@@ -25,7 +25,7 @@
                 "user_password" : "Yifu-Test-User-Password"
             },
             "os_virtual_hard_disk" : {
-                "source_image_name" : "webserver",
+                "source_image_name" : "b549f4301d0b4295b8e76ceb65df47d4__Ubuntu-14_04_1-LTS-amd64-server-20141125-en-us-30GB",
                 "media_link_base" : "blob.core.chinacloudapi.cn",
                 "media_link_container" : "ossvhds"
             },
@@ -35,13 +35,13 @@
                     {
                         "name" : "ssh",
                         "protocol" : "tcp",
-                        "port" : "44",
+                        "port" : "10022",
                         "local_port" : "22"
                     },
                     {
                         "name" : "http",
                         "protocol" : "tcp",
-                        "port" : "1600",
+                        "port" : "10080",
                         "local_port" : "80"
                     }
                 ]
@@ -61,7 +61,7 @@
                 "user_password" : "Yifu-Test--2"
             },
             "os_virtual_hard_disk" : {
-                "source_image_name" : "0c5c79005aae478e8883bf950a861ce0__Windows-Server-2012-Essentials-20131018-enus",
+                "source_image_name" : "0c5c79005aae478e8883bf950a861ce0__Windows-Server-2012-Essentials-20141204-enus",
                 "media_link_base" : "blob.core.chinacloudapi.cn",
                 "media_link_container" : "ossvhds"
             },
@@ -71,12 +71,12 @@
                     {
                         "name" : "http",
                         "protocol" : "tcp",
-                        "port" : "888",
+                        "port" : "20080",
                         "local_port" : "80"
                     }
                 ]
             },
-            "role_size" : "Small"
+            "role_size" : "Medium"
         }
     ]
 }

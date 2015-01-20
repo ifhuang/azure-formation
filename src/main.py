@@ -16,12 +16,13 @@ user_info = a.register(credentials.USER_NAME, credentials.USER_EMAIL, credential
 
 # user choose template
 templates = Template.query.all()
+# make sure public templates are exist
 if templates is None:
     log.error("no public templates")
     sys.exit(1)
-# avoid duplicate user template
 for template in templates:
     user_template = UserTemplate.query.filter_by(user_info=user_info, template=template).first()
+    # avoid duplicate user template
     if user_template is None:
         user_template = UserTemplate(user_info, template)
         db.session.add(user_template)

@@ -115,17 +115,70 @@ class UserResource(db.Model):
     status = db.Column(db.String(50))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
-    user_info_id = db.Column(db.Integer, db.ForeignKey('user_info.id'))
-    user_info = db.relationship('UserInfo', backref=db.backref('user_resource', lazy='dynamic'))
+    user_template_id = db.Column(db.Integer, db.ForeignKey('user_template.id'))
+    user_template = db.relationship('UserTemplate', backref=db.backref('user_resource', lazy='dynamic'))
 
-    def __init__(self, user_info, type, name, status, create_time=None, last_modify_time=None):
+    def __init__(self, user_template, type, name, status, create_time=None, last_modify_time=None):
         if create_time is None:
             create_time = datetime.utcnow()
         if last_modify_time is None:
             last_modify_time = datetime.utcnow()
-        self.user_info = user_info
+        self.user_template = user_template
         self.type = type
         self.name = name
         self.status = status
+        self.create_time = create_time
+        self.last_modify_time = last_modify_time
+
+
+class VMEndpoint(db.Model):
+    __tablename__ = 'vm_endpoint'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50))
+    protocol = db.Column(db.String(50))
+    public_port = db.Column(db.Integer)
+    private_port = db.Column(db.Integer)
+    create_time = db.Column(db.DateTime)
+    last_modify_time = db.Column(db.DateTime)
+    cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
+    cloud_service = db.relationship('UserResource', backref=db.backref('vm_endpoint', lazy='dynamic'))
+    virtual_machine = db.Column(db.String(50))
+
+    def __init__(self, name, protocol, public_port, private_port, cloud_service, virtual_machine,
+                 create_time=None, last_modify_time=None):
+        if create_time is None:
+            create_time = datetime.utcnow()
+        if last_modify_time is None:
+            last_modify_time = datetime.utcnow()
+        self.cloud_service = cloud_service
+        self.virtual_machine = virtual_machine
+        self.name = name
+        self.protocol = protocol
+        self.public_port = public_port
+        self.private_port = private_port
+        self.create_time = create_time
+        self.last_modify_time = last_modify_time
+
+
+class VMConfig(db.Model):
+    __tablename__ = 'vm_config'
+    id = db.Column(db.Integer, primary_key=True)
+    dns = db.Column(db.String(50))
+    public_ip = db.Column(db.String(50))
+    private_ip = db.Column(db.String(50))
+    create_time = db.Column(db.DateTime)
+    last_modify_time = db.Column(db.DateTime)
+    user_resource_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
+    user_resource = db.relationship('UserResource', backref=db.backref('vm_config', lazy='dynamic'))
+
+    def __init__(self, user_resource, dns, public_ip, private_ip, create_time=None, last_modify_time=None):
+        if create_time is None:
+            create_time = datetime.utcnow()
+        if last_modify_time is None:
+            last_modify_time = datetime.utcnow()
+        self.user_resource = user_resource
+        self.dns = dns
+        self.public_ip = public_ip
+        self.private_ip = private_ip
         self.create_time = create_time
         self.last_modify_time = last_modify_time

@@ -12,6 +12,9 @@ import datetime
 
 
 class AzureImpl(CloudABC):
+    """
+    Azure cloud service management
+    """
 
     def __init__(self):
         super(AzureImpl, self).__init__()
@@ -31,7 +34,7 @@ class AzureImpl(CloudABC):
         :return: user info
         """
         user_info = super(AzureImpl, self).register(name, email)
-        certificates_dir = os.path.abspath('certificates')
+        certificates_dir = os.path.dirname(__file__) + os.path.sep + 'certificates'
         # make sure certificate dir is exist
         if not os.path.isdir(certificates_dir):
             os.mkdir(certificates_dir)
@@ -81,12 +84,11 @@ class AzureImpl(CloudABC):
 
     def create(self, user_template):
         """
-        Create a virtual machine according to given user template (assume all fields needed are in template)
+        Create virtual machines according to given user template (assume all fields needed are in template)
         1. If storage account is not exist, then create it
         2. If cloud service is not exist, then create it
-        3. If deployment is not exist, then create a virtual machine with deployment, else add a virtual machine to
-        deployment
-        Currently support only Linux
+        3. If deployment is not exist, then create a virtual machine with deployment
+           Else add a virtual machine to deployment
         :param user_template:
         :return: Whether a virtual machine is created
         """
@@ -218,7 +220,7 @@ class AzureImpl(CloudABC):
                 db.session.commit()
                 # make sure deployment is not exist
                 if not self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
-                    user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
+                    user_resource = UserResource.query.filter_by(user_template=user_template,
                                                                  type='deployment',
                                                                  name=virtual_machine['deployment_name']).first()
                     user_resource.status = 'Deleted'
@@ -229,7 +231,7 @@ class AzureImpl(CloudABC):
                 # make sure virtual machine is not exist
                 if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
                                          virtual_machine['role_name']):
-                    user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
+                    user_resource = UserResource.query.filter_by(user_template=user_template,
                                                                  type='virtual machine',
                                                                  name=virtual_machine['role_name']).first()
                     user_resource.status = 'Deleted'
@@ -257,7 +259,7 @@ class AzureImpl(CloudABC):
                 # make sure virtual machine is not exist
                 if not self._role_exists(virtual_machine['service_name'], virtual_machine['deployment_name'],
                                          virtual_machine['role_name']):
-                    user_resource = UserResource.query.filter_by(user_info=user_template.user_info,
+                    user_resource = UserResource.query.filter_by(user_template=user_template,
                                                                  type='virtual machine',
                                                                  name=virtual_machine['role_name']).first()
                     user_resource.status = 'Deleted'
@@ -380,12 +382,12 @@ class AzureImpl(CloudABC):
 
     def _create_storage_account(self):
         storage_account = self.template_config['storage_account']
-        # avoid duplicate storage account
         try:
             storage = self.sms.check_storage_account_name_availability(storage_account['service_name'])
         except Exception as e:
             log.debug(e)
             return False
+        # avoid duplicate storage account
         if storage.result:
             user_operation = UserOperation(self.user_template, 'create_storage_account', 'start')
             db.session.add(user_operation)
@@ -404,7 +406,7 @@ class AzureImpl(CloudABC):
             db.session.commit()
             # make sure storage account is created
             if self.sms.check_storage_account_name_availability(storage_account['service_name']):
-                    user_resource = UserResource(self.user_template.user_info, 'storage account',
+                    user_resource = UserResource(self.user_template, 'storage account',
                                                  storage_account['service_name'], 'Running')
                     db.session.add(user_resource)
                     db.session.commit()
@@ -436,7 +438,7 @@ class AzureImpl(CloudABC):
             db.session.commit()
             # make sure cloud service is created
             if self._hosted_service_exists(cloud_service['service_name']):
-                user_resource = UserResource(self.user_template.user_info, 'cloud service',
+                user_resource = UserResource(self.user_template, 'cloud service',
                                              cloud_service['service_name'], 'Running')
                 db.session.add(user_resource)
                 db.session.commit()
@@ -474,10 +476,18 @@ class AzureImpl(CloudABC):
             network = ConfigurationSet()
             network.configuration_set_type = network_config['configuration_set_type']
             input_endpoints = network_config['input_endpoints']
+            cloud_service = UserResource.query.filter_by(user_template=self.user_template, type='cloud service').first()
             for input_endpoint in input_endpoints:
+                port = int(input_endpoint['local_port'])
+                while VMEndpoint.query.filter_by(cloud_service=cloud_service, public_port=port).count() > 1:
+                    port = (port + 1) % 65536
+                vm_endpoint = VMEndpoint(input_endpoint['name'], input_endpoint['protocol'], port,
+                                         input_endpoint['local_port'], cloud_service, virtual_machine['role_name'])
+                db.session.add(vm_endpoint)
+                db.session.commit()
                 network.input_endpoints.input_endpoints.append(
                     ConfigurationSetInputEndpoint(input_endpoint['name'], input_endpoint['protocol'],
-                                                  input_endpoint['port'], input_endpoint['local_port']))
+                                                  port, input_endpoint['local_port']))
             # avoid duplicate deployment
             if self._deployment_exists(virtual_machine['service_name'], virtual_machine['deployment_name']):
                 log.debug('deployment %s is exist' % virtual_machine['deployment_name'])
@@ -506,10 +516,21 @@ class AzureImpl(CloudABC):
                     # make sure role is ready
                     if self._wait_for_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
                                            virtual_machine['role_name']):
-                        user_resource = UserResource(self.user_template.user_info, 'virtual machine',
+                        user_resource = UserResource(self.user_template, 'virtual machine',
                                                      virtual_machine['role_name'], 'Running')
                         db.session.add(user_resource)
                         db.session.commit()
+                        deployment = self.sms.get_deployment_by_name(virtual_machine['service_name'],
+                                                                     virtual_machine['deployment_name'])
+                        for role in deployment.role_instance_list:
+                            if role.role_name == virtual_machine['role_name']:
+                                public_ip = None
+                                if role.instance_endpoints is not None:
+                                    public_ip = role.instance_endpoints.instance_endpoints[0].vip
+                                vm_config = VMConfig(user_resource, deployment.url, public_ip, role.ip_address)
+                                db.session.add(vm_config)
+                                db.session.commit()
+                                break
                     else:
                         log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
                         return False
@@ -551,7 +572,7 @@ class AzureImpl(CloudABC):
                 db.session.commit()
                 # make sure deployment is running
                 if self._wait_for_deployment(virtual_machine['service_name'], virtual_machine['deployment_name']):
-                    user_resource = UserResource(self.user_template.user_info, 'deployment',
+                    user_resource = UserResource(self.user_template, 'deployment',
                                                  virtual_machine['deployment_name'], 'Running')
                     db.session.add(user_resource)
                     db.session.commit()
@@ -561,10 +582,21 @@ class AzureImpl(CloudABC):
                 # make sure role is ready
                 if self._wait_for_role(virtual_machine['service_name'], virtual_machine['deployment_name'],
                                        virtual_machine['role_name']):
-                    user_resource = UserResource(self.user_template.user_info, 'virtual machine',
+                    user_resource = UserResource(self.user_template, 'virtual machine',
                                                  virtual_machine['role_name'], 'Running')
                     db.session.add(user_resource)
                     db.session.commit()
+                    deployment = self.sms.get_deployment_by_name(virtual_machine['service_name'],
+                                                                 virtual_machine['deployment_name'])
+                    for role in deployment.role_instance_list:
+                        if role.role_name == virtual_machine['role_name']:
+                            public_ip = None
+                            if role.instance_endpoints is not None:
+                                public_ip = role.instance_endpoints.instance_endpoints[0].vip
+                            vm_config = VMConfig(user_resource, deployment.url, public_ip, role.ip_address)
+                            db.session.add(vm_config)
+                            db.session.commit()
+                            break
                 else:
                     log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
                     return False
