@@ -27,7 +27,7 @@
             "os_virtual_hard_disk" : {
                 "source_image_name" : "b549f4301d0b4295b8e76ceb65df47d4__Ubuntu-14_04_1-LTS-amd64-server-20141125-en-us-30GB",
                 "media_link_base" : "blob.core.chinacloudapi.cn",
-                "media_link_container" : "ossvhds"
+                "media_link_container" : "yifu0container"
             },
             "network_config" : {
                 "configuration_set_type" : "NetworkConfiguration",

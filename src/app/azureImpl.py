@@ -14,6 +14,7 @@ import datetime
 class AzureImpl(CloudABC):
     """
     Azure cloud service management
+    Currently manage only resources created by itself
     """
 
     def __init__(self):
@@ -271,102 +272,12 @@ class AzureImpl(CloudABC):
 
     # --------------------------------------------helper function-------------------------------------------- #
 
-    def _hosted_service_exists(self, name):
-        try:
-            props = self.sms.get_hosted_service_properties(name)
-        except Exception as e:
-            log.debug('cloud service %s: %s' % (name, e))
-            return False
-        return props is not None
-
-    def _deployment_exists(self, service_name, deployment_name):
-        try:
-            props = self.sms.get_deployment_by_name(service_name, deployment_name)
-        except Exception as e:
-            log.debug('deployment %s: %s' % (deployment_name, e))
-            return False
-        return props is not None
-
-    def _role_exists(self, service_name, deployment_name, role_name):
-        try:
-            props = self.sms.get_role(service_name, deployment_name, role_name)
-        except Exception as e:
-            log.debug('virtual machine %s: %s' % (role_name, e))
-            return False
-        return props is not None
-
-    def _wait_for_async(self, request_id):
-        count = 0
-        result = self.sms.get_operation_status(request_id)
-        while result.status == 'InProgress':
-            log.debug('_wait_for_async loop count: %d' % count)
-            count += 1
-            if count > 120:
-                log.debug('Timed out waiting for async operation to complete.')
-                break
-            time.sleep(5)
-            result = self.sms.get_operation_status(request_id)
-        if result.status != 'Succeeded':
-            log.debug(vars(result))
-            if result.error:
-                log.debug(result.error.code)
-                log.debug(vars(result.error))
-            log.debug('Asynchronous operation did not succeed.')
-
-    def _wait_for_deployment(self, service_name, deployment_name, status='Running'):
-        count = 0
-        props = self.sms.get_deployment_by_name(service_name, deployment_name)
-        while props.status != status:
-            log.debug('_wait_for_deployment loop count: %d' % count)
-            count += 1
-            if count > 120:
-                log.debug('Timed out waiting for deployment status.')
-                break
-            time.sleep(5)
-            props = self.sms.get_deployment_by_name(service_name, deployment_name)
-        return props.status == status
-
-    def _wait_for_role(self, service_name, deployment_name, role_instance_name, status='ReadyRole'):
-        count = 0
-        props = self.sms.get_deployment_by_name(service_name, deployment_name)
-        while self._get_role_instance_status(props, role_instance_name) != status:
-            log.debug('_wait_for_role loop count: %d' % count)
-            count += 1
-            if count > 120:
-                log.debug('Timed out waiting for role instance status.')
-                break
-            time.sleep(5)
-            props = self.sms.get_deployment_by_name(service_name, deployment_name)
-        return self._get_role_instance_status(props, role_instance_name) == status
-
-    def _get_role_instance_status(self, deployment, role_instance_name):
-        for role_instance in deployment.role_instance_list:
-            if role_instance.instance_name == role_instance_name:
-                return role_instance.instance_status
-        return None
-
-    def _cmp_network_config(self, configuration_sets, network2):
-        for network1 in configuration_sets:
-            if network1.configuration_set_type == 'NetworkConfiguration':
-                points1 = network1.input_endpoints.input_endpoints
-                points1 = sorted(points1, key=lambda point: point.name)
-                points2 = network2.input_endpoints.input_endpoints
-                points2 = sorted(points2, key=lambda point: point.name)
-                if len(points1) != len(points2):
-                    return False
-                for i in range(len(points1)):
-                    if points1[i].name != points2[i].name:
-                        return False
-                    if points1[i].protocol != points2[i].protocol:
-                        return False
-                    if points1[i].port != points2[i].port:
-                        return False
-                    if points1[i].local_port != points2[i].local_port:
-                        return False
-                return True
-        return False
-
     def _load_template(self, user_template):
+        """
+        Load json based template into dictionary
+        :param user_template:
+        :return:
+        """
         self.user_template = user_template
         # make sure template url is exist
         if os.path.isfile(user_template.template.url):
@@ -381,41 +292,58 @@ class AzureImpl(CloudABC):
         return True
 
     def _create_storage_account(self):
+        """
+        If storage account is not exist, then create it
+        Else check it whether created by this function before
+        :return:
+        """
         storage_account = self.template_config['storage_account']
-        try:
-            storage = self.sms.check_storage_account_name_availability(storage_account['service_name'])
-        except Exception as e:
-            log.debug(e)
-            return False
         # avoid duplicate storage account
-        if storage.result:
+        if not self._storage_account_exists(storage_account['service_name']):
             user_operation = UserOperation(self.user_template, 'create_storage_account', 'start')
             db.session.add(user_operation)
             db.session.commit()
             try:
-                self.sms.create_storage_account(storage_account['service_name'], storage_account['description'],
-                                                storage_account['label'], location=storage_account['location'])
+                result = self.sms.create_storage_account(storage_account['service_name'],
+                                                         storage_account['description'], storage_account['label'],
+                                                         location=storage_account['location'])
             except Exception as e:
-                user_operation = UserOperation(self.user_template, 'create_storage_account', 'fail')
+                user_operation = UserOperation(self.user_template, 'create_storage_account', 'fail', e.message)
                 db.session.add(user_operation)
                 db.session.commit()
                 log.debug(e)
                 return False
+            self._wait_for_async(result.request_id)
             user_operation = UserOperation(self.user_template, 'create_storage_account', 'end')
             db.session.add(user_operation)
             db.session.commit()
             # make sure storage account is created
-            if self.sms.check_storage_account_name_availability(storage_account['service_name']):
-                    user_resource = UserResource(self.user_template, 'storage account',
-                                                 storage_account['service_name'], 'Running')
-                    db.session.add(user_resource)
-                    db.session.commit()
+            if self._storage_account_exists(storage_account['service_name']):
+                user_resource = UserResource(self.user_template, 'storage account', storage_account['service_name'],
+                                             'Running')
+                db.session.add(user_resource)
+                db.session.commit()
             else:
-                    log.debug('cannot create storage account %s' % storage_account['service_name'])
-                    return False
+                log.debug('cannot create storage account %s' % storage_account['service_name'])
+                return False
         else:
-            log.debug('storage account %s is exist' % storage_account['service_name'])
+            if UserResource.query.filter_by(user_template=self.user_template, type='storage account',
+                                            name=storage_account['service_name'], status='Running').count() == 0:
+                log.debug('storage account %s is exist but not created by this function before' %
+                          storage_account['service_name'])
+                return False
+            else:
+                log.debug('storage account %s is exist and created by this function before' %
+                          storage_account['service_name'])
         return True
+
+    def _storage_account_exists(self, name):
+        try:
+            props = self.sms.get_storage_account_properties(name)
+            return props is not None
+        except Exception as e:
+            log.debug('storage account %s: %s' % (name, e))
+            return False
 
     def _create_cloud_service(self):
         cloud_service = self.template_config['cloud_service']
@@ -601,3 +529,98 @@ class AzureImpl(CloudABC):
                     log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
                     return False
         return True
+
+    def _hosted_service_exists(self, name):
+        try:
+            props = self.sms.get_hosted_service_properties(name)
+        except Exception as e:
+            log.debug('cloud service %s: %s' % (name, e))
+            return False
+        return props is not None
+
+    def _deployment_exists(self, service_name, deployment_name):
+        try:
+            props = self.sms.get_deployment_by_name(service_name, deployment_name)
+        except Exception as e:
+            log.debug('deployment %s: %s' % (deployment_name, e))
+            return False
+        return props is not None
+
+    def _role_exists(self, service_name, deployment_name, role_name):
+        try:
+            props = self.sms.get_role(service_name, deployment_name, role_name)
+        except Exception as e:
+            log.debug('virtual machine %s: %s' % (role_name, e))
+            return False
+        return props is not None
+
+    def _wait_for_async(self, request_id):
+        count = 0
+        result = self.sms.get_operation_status(request_id)
+        while result.status == 'InProgress':
+            log.debug('_wait_for_async loop count: %d' % count)
+            count += 1
+            if count > 120:
+                log.debug('Timed out waiting for async operation to complete.')
+                break
+            time.sleep(5)
+            result = self.sms.get_operation_status(request_id)
+        if result.status != 'Succeeded':
+            log.debug(vars(result))
+            if result.error:
+                log.debug(result.error.code)
+                log.debug(vars(result.error))
+            log.debug('Asynchronous operation did not succeed.')
+
+    def _wait_for_deployment(self, service_name, deployment_name, status='Running'):
+        count = 0
+        props = self.sms.get_deployment_by_name(service_name, deployment_name)
+        while props.status != status:
+            log.debug('_wait_for_deployment loop count: %d' % count)
+            count += 1
+            if count > 120:
+                log.debug('Timed out waiting for deployment status.')
+                break
+            time.sleep(5)
+            props = self.sms.get_deployment_by_name(service_name, deployment_name)
+        return props.status == status
+
+    def _wait_for_role(self, service_name, deployment_name, role_instance_name, status='ReadyRole'):
+        count = 0
+        props = self.sms.get_deployment_by_name(service_name, deployment_name)
+        while self._get_role_instance_status(props, role_instance_name) != status:
+            log.debug('_wait_for_role loop count: %d' % count)
+            count += 1
+            if count > 120:
+                log.debug('Timed out waiting for role instance status.')
+                break
+            time.sleep(5)
+            props = self.sms.get_deployment_by_name(service_name, deployment_name)
+        return self._get_role_instance_status(props, role_instance_name) == status
+
+    def _get_role_instance_status(self, deployment, role_instance_name):
+        for role_instance in deployment.role_instance_list:
+            if role_instance.instance_name == role_instance_name:
+                return role_instance.instance_status
+        return None
+
+    def _cmp_network_config(self, configuration_sets, network2):
+        for network1 in configuration_sets:
+            if network1.configuration_set_type == 'NetworkConfiguration':
+                points1 = network1.input_endpoints.input_endpoints
+                points1 = sorted(points1, key=lambda point: point.name)
+                points2 = network2.input_endpoints.input_endpoints
+                points2 = sorted(points2, key=lambda point: point.name)
+                if len(points1) != len(points2):
+                    return False
+                for i in range(len(points1)):
+                    if points1[i].name != points2[i].name:
+                        return False
+                    if points1[i].protocol != points2[i].protocol:
+                        return False
+                    if points1[i].port != points2[i].port:
+                        return False
+                    if points1[i].local_port != points2[i].local_port:
+                        return False
+                return True
+        return False

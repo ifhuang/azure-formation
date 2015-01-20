@@ -95,16 +95,18 @@ class UserOperation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     operation = db.Column(db.String(50))
     status = db.Column(db.String(50))
+    note = db.Column(db.String(500))
     exec_time = db.Column(db.DateTime)
     user_template_id = db.Column(db.Integer, db.ForeignKey('user_template.id'))
     user_template = db.relationship('UserTemplate', backref=db.backref('user_operation', lazy='dynamic'))
 
-    def __init__(self, user_template, operation, status, exec_time=None):
+    def __init__(self, user_template, operation, status, note=None, exec_time=None):
         if exec_time is None:
             exec_time = datetime.utcnow()
         self.user_template = user_template
         self.operation = operation
         self.status = status
+        self.note = note
         self.exec_time = exec_time
 
 
