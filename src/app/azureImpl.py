@@ -474,15 +474,16 @@ class AzureImpl(CloudABC):
            Else check whether virtual machine created by this function before
         :return:
         """
-        self._user_operation_commit('_create_virtual_machines', 'start')
         storage_account = self.template_config['storage_account']
         container = self.template_config['container']
         cloud_service = self.template_config['cloud_service']
         deployment = self.template_config['deployment']
         virtual_machines = self.template_config['virtual_machines']
         for virtual_machine in virtual_machines:
+            self._user_operation_commit('_create_virtual_machines_deployment', 'start')
+            self._user_operation_commit('_create_virtual_machines_role', 'start')
             system_config = virtual_machine['system_config']
-            # check whether is Windows or Linux
+            # check whether virtual machine is Windows or Linux
             if system_config['os_family'] == 'Windows':
                 config = WindowsConfigurationSet(computer_name=system_config['host_name'],
                                                  admin_password=system_config['user_password'],
@@ -518,52 +519,76 @@ class AzureImpl(CloudABC):
                                                   port, input_endpoint['local_port']))
             # avoid duplicate deployment
             if self._deployment_exists(cloud_service['service_name'], deployment['deployment_name']):
-                m = 'deployment %s exist' % deployment['deployment_name']
-                self._user_operation_commit('_create_virtual_machines', 'start', m)
-                log.debug(m)
+                if UserResource.query.filter_by(user_template=self.user_template, type='deployment',
+                                                name=deployment['deployment_name'], status='Running').count() == 0:
+                    m = 'deployment %s exist but not created by this function before' % deployment['deployment_name']
+                    self._user_operation_commit('_create_virtual_machines_deployment', 'fail', m)
+                    self._vm_endpoint_rollback(cs)
+                    log.debug(m)
+                    return False
+                else:
+                    m = 'deployment %s exist and created by this function before' % deployment['deployment_name']
+                    self._user_operation_commit('_create_virtual_machines_deployment', 'end', m)
+                    log.debug(m)
                 # avoid duplicate role
                 if self._role_exists(cloud_service['service_name'], deployment['deployment_name'],
                                      virtual_machine['role_name']):
-                    log.debug('virtual machine %s is exist' % virtual_machine['role_name'])
+                    if UserResource.query.filter_by(user_template=self.user_template, type='virtual machine',
+                                                    name=virtual_machine['role_name'], status='Running').count() == 0:
+                        m = 'virtual machine %s exist but not created by this function before' %\
+                            virtual_machine['role_name']
+                        self._user_operation_commit('_create_virtual_machines_role', 'fail', m)
+                        self._vm_endpoint_rollback(cs)
+                        log.debug(m)
+                        return False
+                    else:
+                        m = 'virtual machine %s exist and created by this function before' %\
+                            virtual_machine['role_name']
+                        self._user_operation_commit('_create_virtual_machines_role', 'end', m)
+                        self._vm_endpoint_rollback(cs)
+                        log.debug(m)
                 else:
-                    user_operation = UserOperation(self.user_template, 'add_role', 'start')
-                    db.session.add(user_operation)
-                    db.session.commit()
                     try:
                         result = self.sms.add_role(cloud_service['service_name'], deployment['deployment_name'],
                                                    virtual_machine['role_name'], config, os_hd,
                                                    network_config=network, role_size=virtual_machine['role_size'])
                     except Exception as e:
-                        user_operation = UserOperation(self.user_template, 'add_role', 'fail')
-                        db.session.add(user_operation)
-                        db.session.commit()
+                        self._user_operation_commit('_create_virtual_machines_role', 'fail', e.message)
+                        self._vm_endpoint_rollback(cs)
                         log.debug(e)
                         return False
-                    self._wait_for_async(result.request_id)
-                    user_operation = UserOperation(self.user_template, 'add_role', 'end')
-                    db.session.add(user_operation)
-                    db.session.commit()
+                    # make sure async operation succeeds
+                    if not self._wait_for_async(result.request_id, 30, 30):
+                        m = '_wait_for_async fail'
+                        self._user_operation_commit('_create_virtual_machines_role', 'fail', m)
+                        self._vm_endpoint_rollback(cs)
+                        log.debug(m)
+                        return False
                     # make sure role is ready
-                    if self._wait_for_role(cloud_service['service_name'], deployment['deployment_name'],
-                                           virtual_machine['role_name']):
-                        user_resource = UserResource(self.user_template, 'virtual machine',
-                                                     virtual_machine['role_name'], 'Running')
-                        db.session.add(user_resource)
-                        db.session.commit()
+                    if not self._wait_for_role(cloud_service['service_name'], deployment['deployment_name'],
+                                               virtual_machine['role_name'], 30, 30):
+                        m = 'virtual machine %s created but not exist' % virtual_machine['role_name']
+                        self._user_operation_commit('_create_virtual_machines_role', 'fail', m)
+                        self._vm_endpoint_rollback(cs)
+                        log.debug(m)
+                        return False
+                    else:
+                        self._user_resource_commit('virtual machine', virtual_machine['role_name'], 'Running')
+                        self._user_operation_commit('_create_virtual_machines_role', 'end')
+                        vm = UserResource.query.filter_by(user_template=self.user_template, type='virtual machine',
+                                                          name=virtual_machine['role_name'], status='Running').first()
+                        self._vm_endpoint_update(cs, vm)
                         deployment = self.sms.get_deployment_by_name(cloud_service['service_name'],
                                                                      deployment['deployment_name'])
                         for role in deployment.role_instance_list:
+                            # to get private ip
                             if role.role_name == virtual_machine['role_name']:
                                 public_ip = None
+                                # to get public ip
                                 if role.instance_endpoints is not None:
                                     public_ip = role.instance_endpoints.instance_endpoints[0].vip
-                                vm_config = VMConfig(user_resource, deployment.url, public_ip, role.ip_address)
-                                db.session.add(vm_config)
-                                db.session.commit()
+                                self._vm_config_commit(vm, deployment.url, public_ip, role.ip_address)
                                 break
-                    else:
-                        log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
-                        return False
             else:
                 try:
                     result = self.sms.create_virtual_machine_deployment(cloud_service['service_name'],
@@ -576,39 +601,54 @@ class AzureImpl(CloudABC):
                                                                         network_config=network,
                                                                         role_size=virtual_machine['role_size'])
                 except Exception as e:
+                    self._user_operation_commit('_create_virtual_machines_deployment,', 'fail', e.message)
+                    self._user_operation_commit('_create_virtual_machines_role,', 'fail', e.message)
+                    self._vm_endpoint_rollback(cs)
                     log.debug(e)
                     return False
-                self._wait_for_async(result.request_id)
-                # make sure deployment is running
-                if self._wait_for_deployment(cloud_service['service_name'], deployment['deployment_name']):
-                    user_resource = UserResource(self.user_template, 'deployment',
-                                                 deployment['deployment_name'], 'Running')
-                    db.session.add(user_resource)
-                    db.session.commit()
-                else:
-                    log.debug('%s is not running' % deployment['deployment_name'])
+                # make sure async operation succeeds
+                if not self._wait_for_async(result.request_id, 30, 30):
+                    m = '_wait_for_async fail'
+                    self._user_operation_commit('_create_virtual_machines_deployment,', 'fail', m)
+                    self._user_operation_commit('_create_virtual_machines_role,', 'fail', m)
+                    self._vm_endpoint_rollback(cs)
+                    log.debug(m)
                     return False
+                # make sure deployment is running
+                if not self._wait_for_deployment(cloud_service['service_name'], deployment['deployment_name'], 30, 30):
+                    m = 'deployment %s created but not exist' % deployment['deployment_name']
+                    self._user_operation_commit('_create_virtual_machines_deployment', 'fail', m)
+                    self._vm_endpoint_rollback(cs)
+                    log.debug(m)
+                    return False
+                else:
+                    self._user_resource_commit('deployment', deployment['deployment_name'], 'Running')
+                    self._user_operation_commit('_create_virtual_machines_deployment,', 'end')
                 # make sure role is ready
-                if self._wait_for_role(cloud_service['service_name'], deployment['deployment_name'],
-                                       virtual_machine['role_name']):
-                    user_resource = UserResource(self.user_template, 'virtual machine',
-                                                 virtual_machine['role_name'], 'Running')
-                    db.session.add(user_resource)
-                    db.session.commit()
+                if not self._wait_for_role(cloud_service['service_name'], deployment['deployment_name'],
+                                           virtual_machine['role_name'], 30, 30):
+                    m = 'virtual machine %s created but not exist' % virtual_machine['role_name']
+                    self._user_operation_commit('_create_virtual_machines_role', 'fail', m)
+                    self._vm_endpoint_rollback(cs)
+                    log.debug(m)
+                    return False
+                else:
+                    self._user_resource_commit('virtual machine', virtual_machine['role_name'], 'Running')
+                    self._user_operation_commit('_create_virtual_machines_role,', 'end')
+                    vm = UserResource.query.filter_by(user_template=self.user_template, type='virtual machine',
+                                                      name=virtual_machine['role_name'], status='Running').first()
+                    self._vm_endpoint_update(cs, vm)
                     deployment = self.sms.get_deployment_by_name(cloud_service['service_name'],
                                                                  deployment['deployment_name'])
                     for role in deployment.role_instance_list:
+                        # to get private ip
                         if role.role_name == virtual_machine['role_name']:
                             public_ip = None
+                            # to get public ip
                             if role.instance_endpoints is not None:
                                 public_ip = role.instance_endpoints.instance_endpoints[0].vip
-                            vm_config = VMConfig(user_resource, deployment.url, public_ip, role.ip_address)
-                            db.session.add(vm_config)
-                            db.session.commit()
+                            self._vm_config_commit(vm, deployment.url, public_ip, role.ip_address)
                             break
-                else:
-                    log.debug('virtual machine %s is not ready' % virtual_machine['role_name'])
-                    return False
         return True
 
     def _vm_endpoint_commit(self, name, protocol, port, local_port, cs):
@@ -625,6 +665,21 @@ class AzureImpl(CloudABC):
         db.session.add(vm_endpoint)
         db.session.commit()
 
+    def _deployment_exists(self, service_name, deployment_name):
+        """
+        Check whether specific deployment exist
+        :param service_name:
+        :param deployment_name:
+        :return:
+        """
+        try:
+            props = self.sms.get_deployment_by_name(service_name, deployment_name)
+        except Exception as e:
+            if e.message != 'Not found (Not Found)':
+                log.debug('deployment %s: %s' % (deployment_name, e))
+            return False
+        return props is not None
+
     def _vm_endpoint_rollback(self, cs):
         """
         Rollback vm endpoint in database because no vm created
@@ -634,6 +689,22 @@ class AzureImpl(CloudABC):
         VMEndpoint.query.filter_by(cloud_service=cs, virtual_machine=None).delete()
         db.session.commit()
 
+    def _role_exists(self, service_name, deployment_name, role_name):
+        """
+        Check whether specific virtual machine exist
+        :param service_name:
+        :param deployment_name:
+        :param role_name:
+        :return:
+        """
+        try:
+            props = self.sms.get_role(service_name, deployment_name, role_name)
+        except Exception as e:
+            if e.message != 'Not found (Not Found)':
+                log.debug('virtual machine %s: %s' % (role_name, e))
+            return False
+        return props is not None
+
     def _vm_endpoint_update(self, cs, vm):
         """
         Update vm endpoint in database after vm created
@@ -641,52 +712,73 @@ class AzureImpl(CloudABC):
         :param vm:
         :return:
         """
-        VMEndpoint.query.filter_by(cloud_service=cs, virtual_machine=None).update({VMEndpoint.virtual_machine: vm})
+        VMEndpoint.query.filter_by(cloud_service=cs, virtual_machine=None).update(
+            {VMEndpoint.virtual_machine: vm})
         db.session.commit()
 
-    def _deployment_exists(self, service_name, deployment_name):
-        try:
-            props = self.sms.get_deployment_by_name(service_name, deployment_name)
-        except Exception as e:
-            log.debug('deployment %s: %s' % (deployment_name, e))
-            return False
-        return props is not None
+    def _vm_config_commit(self, vm, dns, public_ip, private_ip):
+        """
+        Commit vm config to database
+        :param vm:
+        :return:
+        """
+        vm_config = VMConfig(vm, dns, public_ip, private_ip)
+        db.session.add(vm_config)
+        db.session.commit()
 
-    def _role_exists(self, service_name, deployment_name, role_name):
-        try:
-            props = self.sms.get_role(service_name, deployment_name, role_name)
-        except Exception as e:
-            log.debug('virtual machine %s: %s' % (role_name, e))
-            return False
-        return props is not None
-
-    def _wait_for_deployment(self, service_name, deployment_name, status='Running'):
+    def _wait_for_deployment(self, service_name, deployment_name, second_per_loop, loop, status='Running'):
+        """
+        Wait for deployment until running
+        :param service_name:
+        :param deployment_name:
+        :param second_per_loop:
+        :param loop:
+        :param status:
+        :return:
+        """
         count = 0
         props = self.sms.get_deployment_by_name(service_name, deployment_name)
         while props.status != status:
-            log.debug('_wait_for_deployment loop count: %d' % count)
+            log.debug('_wait_for_deployment [%s] loop count: %d' % (deployment_name, count))
             count += 1
-            if count > 120:
+            if count > loop:
                 log.debug('Timed out waiting for deployment status.')
-                break
-            time.sleep(5)
+                return False
+            time.sleep(second_per_loop)
             props = self.sms.get_deployment_by_name(service_name, deployment_name)
         return props.status == status
 
-    def _wait_for_role(self, service_name, deployment_name, role_instance_name, status='ReadyRole'):
+    def _wait_for_role(self, service_name, deployment_name, role_instance_name,
+                       second_per_loop, loop, status='ReadyRole'):
+        """
+        Wait virtual machine until ready
+        :param service_name:
+        :param deployment_name:
+        :param role_instance_name:
+        :param second_per_loop:
+        :param loop:
+        :param status:
+        :return:
+        """
         count = 0
         props = self.sms.get_deployment_by_name(service_name, deployment_name)
         while self._get_role_instance_status(props, role_instance_name) != status:
-            log.debug('_wait_for_role loop count: %d' % count)
+            log.debug('_wait_for_role [%s] loop count: %d' % (role_instance_name, count))
             count += 1
-            if count > 120:
+            if count > loop:
                 log.debug('Timed out waiting for role instance status.')
-                break
-            time.sleep(5)
+                return False
+            time.sleep(second_per_loop)
             props = self.sms.get_deployment_by_name(service_name, deployment_name)
         return self._get_role_instance_status(props, role_instance_name) == status
 
     def _get_role_instance_status(self, deployment, role_instance_name):
+        """
+        Get virtual machine status
+        :param deployment:
+        :param role_instance_name:
+        :return:
+        """
         for role_instance in deployment.role_instance_list:
             if role_instance.instance_name == role_instance_name:
                 return role_instance.instance_status
