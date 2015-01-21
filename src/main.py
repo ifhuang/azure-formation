@@ -10,13 +10,13 @@ import sys
 
 a = AzureImpl()
 # create user info and key
-user_info = a.register(credentials.USER_NAME, credentials.USER_EMAIL, credentials.SUBSCRIPTION_ID,
-                       credentials.MANAGEMENT_HOST)
+user_info = a.register(credentials.USER_NAME, credentials.USER_EMAIL,
+                       credentials.SUBSCRIPTION_ID, credentials.MANAGEMENT_HOST)
 # after key generation, cer should be uploaded to user's azure portal
 
 # user choose template
 templates = Template.query.all()
-# make sure public templates are exist
+# make sure public templates exist
 if templates is None:
     log.error("no public templates")
     sys.exit(1)
@@ -28,7 +28,7 @@ for template in templates:
         db.session.add(user_template)
         db.session.commit()
     else:
-        log.debug('user template [%d] is exist' % user_template.id)
+        log.debug('user template [%d] exist' % user_template.id)
 
 # connect to azure service management
 connected = a.connect(user_info)

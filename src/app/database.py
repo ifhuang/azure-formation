@@ -143,10 +143,11 @@ class VMEndpoint(db.Model):
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
     cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
-    cloud_service = db.relationship('UserResource', backref=db.backref('vm_endpoint', lazy='dynamic'))
-    virtual_machine = db.Column(db.String(50))
+    cloud_service = db.relationship('UserResource', foreign_keys=[cloud_service_id])
+    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
+    virtual_machine = db.relationship('UserResource', foreign_keys=[virtual_machine_id])
 
-    def __init__(self, name, protocol, public_port, private_port, cloud_service, virtual_machine,
+    def __init__(self, name, protocol, public_port, private_port, cloud_service, virtual_machine=None,
                  create_time=None, last_modify_time=None):
         if create_time is None:
             create_time = datetime.utcnow()
@@ -170,8 +171,8 @@ class VMConfig(db.Model):
     private_ip = db.Column(db.String(50))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
-    user_resource_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
-    user_resource = db.relationship('UserResource', backref=db.backref('vm_config', lazy='dynamic'))
+    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
+    virtual_machine = db.relationship('UserResource', backref=db.backref('vm_config', lazy='dynamic'))
 
     def __init__(self, user_resource, dns, public_ip, private_ip, create_time=None, last_modify_time=None):
         if create_time is None:
