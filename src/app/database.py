@@ -118,9 +118,11 @@ class UserResource(db.Model):
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
     user_template_id = db.Column(db.Integer, db.ForeignKey('user_template.id'))
-    user_template = db.relationship('UserTemplate', backref=db.backref('user_resource', lazy='dynamic'))
+    user_template = db.relationship('UserTemplate', backref=db.backref('user_resource1', lazy='dynamic'))
+    cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
+    cloud_service = db.relationship('UserResource')
 
-    def __init__(self, user_template, type, name, status, create_time=None, last_modify_time=None):
+    def __init__(self, user_template, type, name, status, cloud_service=None, create_time=None, last_modify_time=None):
         if create_time is None:
             create_time = datetime.utcnow()
         if last_modify_time is None:
@@ -129,6 +131,7 @@ class UserResource(db.Model):
         self.type = type
         self.name = name
         self.status = status
+        self.cloud_service = cloud_service
         self.create_time = create_time
         self.last_modify_time = last_modify_time
 
@@ -143,9 +146,11 @@ class VMEndpoint(db.Model):
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
     cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
-    cloud_service = db.relationship('UserResource', foreign_keys=[cloud_service_id])
+    cloud_service = db.relationship('UserResource', foreign_keys=[cloud_service_id],
+                                    backref=db.backref('vm_endpoint1', lazy='dynamic'))
     virtual_machine_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
-    virtual_machine = db.relationship('UserResource', foreign_keys=[virtual_machine_id])
+    virtual_machine = db.relationship('UserResource', foreign_keys=[virtual_machine_id],
+                                      backref=db.backref('vm_endpoint2', lazy='dynamic'))
 
     def __init__(self, name, protocol, public_port, private_port, cloud_service, virtual_machine=None,
                  create_time=None, last_modify_time=None):
@@ -174,12 +179,12 @@ class VMConfig(db.Model):
     virtual_machine_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
     virtual_machine = db.relationship('UserResource', backref=db.backref('vm_config', lazy='dynamic'))
 
-    def __init__(self, user_resource, dns, public_ip, private_ip, create_time=None, last_modify_time=None):
+    def __init__(self, virtual_machine, dns, public_ip, private_ip, create_time=None, last_modify_time=None):
         if create_time is None:
             create_time = datetime.utcnow()
         if last_modify_time is None:
             last_modify_time = datetime.utcnow()
-        self.user_resource = user_resource
+        self.virtual_machine = virtual_machine
         self.dns = dns
         self.public_ip = public_ip
         self.private_ip = private_ip
