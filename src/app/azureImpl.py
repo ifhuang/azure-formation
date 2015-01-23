@@ -16,7 +16,7 @@ class AzureImpl(CloudABC):
     Azure cloud service management
     For logic: manage only resources created by this program itself
     For template: one storage account, one container, one cloud service, one deployment,
-    multiple virtual machines(Windows/Linux), multiple input endpoints
+    multiple virtual machines (Windows/Linux), multiple input endpoints
     """
 
     def __init__(self):
@@ -322,7 +322,7 @@ class AzureImpl(CloudABC):
                     return False
                 else:
                     dm = UserResource.query.filter_by(user_template=user_template, type='deployment',
-                                                      name=deployment['deployment_name'],
+                                                      name=deployment['deployment_name'], status='Running',
                                                       cloud_service_id=cs.id).first()
                     dm.status = 'Deleted'
                     db.session.commit()
@@ -336,7 +336,7 @@ class AzureImpl(CloudABC):
                     return False
                 else:
                     vm = UserResource.query.filter_by(user_template=user_template, type='virtual machine',
-                                                      name=virtual_machine['role_name'],
+                                                      name=virtual_machine['role_name'], status='Running',
                                                       cloud_service_id=cs.id).first()
                     VMEndpoint.query.filter_by(virtual_machine=vm).delete()
                     VMConfig.query.filter_by(virtual_machine=vm).delete()
@@ -367,7 +367,7 @@ class AzureImpl(CloudABC):
                     return False
                 else:
                     vm = UserResource.query.filter_by(user_template=user_template, type='virtual machine',
-                                                      name=virtual_machine['role_name'],
+                                                      name=virtual_machine['role_name'], status='Running',
                                                       cloud_service_id=cs.id).first()
                     VMEndpoint.query.filter_by(virtual_machine=vm).delete()
                     VMConfig.query.filter_by(virtual_machine=vm).delete()
