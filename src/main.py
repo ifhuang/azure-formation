@@ -39,9 +39,10 @@ user_template = UserTemplate.query.filter_by(id=1).first()
 created = a.create(user_template)
 log.debug('create: %s' % created)
 
-user_template = UserTemplate.query.filter_by(id=2).first()
+user_template = UserTemplate.query.filter_by(id=1).first()
+update_template = UserTemplate.query.filter_by(id=2).first()
 # update virtual machine
-updated = a.update(user_template)
+updated = a.update(user_template, update_template)
 log.debug('update: %s' % updated)
 
 user_template = UserTemplate.query.filter_by(id=1).first()

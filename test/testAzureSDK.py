@@ -36,9 +36,8 @@ def old_endpoints():
 
 
 def list_like():
-    cs = None
     user_template = UserTemplate.query.filter_by(id=1).first()
-    user_resource = UserResource(user_template, 'test', 'test', 'test')
+    user_resource = UserResource(user_template, 'test', 'test', 'test', [])
     db.session.add(user_resource)
     db.session.commit()
 

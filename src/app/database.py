@@ -5,7 +5,8 @@ from src.app.functions import *
 from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime
 
-app.config["SQLALCHEMY_DATABASE_URI"]= safe_get_config("mysql/connection", "mysql://root:root@localhost/azureautodeploy")
+app.config["SQLALCHEMY_DATABASE_URI"] = safe_get_config("mysql/connection",
+                                                        "mysql://root:root@localhost/azureautodeploy")
 db = SQLAlchemy(app)
 
 
@@ -119,10 +120,9 @@ class UserResource(db.Model):
     last_modify_time = db.Column(db.DateTime)
     user_template_id = db.Column(db.Integer, db.ForeignKey('user_template.id'))
     user_template = db.relationship('UserTemplate', backref=db.backref('user_resource1', lazy='dynamic'))
-    cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
-    cloud_service = db.relationship('UserResource')
+    cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))  # for deployment and virtual machine
 
-    def __init__(self, user_template, type, name, status, cloud_service=None, create_time=None, last_modify_time=None):
+    def __init__(self, user_template, type, name, status, cloud_service_id, create_time=None, last_modify_time=None):
         if create_time is None:
             create_time = datetime.utcnow()
         if last_modify_time is None:
@@ -131,7 +131,7 @@ class UserResource(db.Model):
         self.type = type
         self.name = name
         self.status = status
-        self.cloud_service = cloud_service
+        self.cloud_service_id = cloud_service_id
         self.create_time = create_time
         self.last_modify_time = last_modify_time
 

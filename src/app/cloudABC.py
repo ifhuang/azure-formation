@@ -54,9 +54,9 @@ class CloudABC:
         pass
 
     @abstractmethod
-    def update(self, user_template):
+    def update(self, user_template, update_template):
         """
-        Update virtual machines according to given user template
+        Update virtual machines created by user template according to given update template
         :param user_template:
         :return:
         """
