@@ -203,14 +203,14 @@ class AzureImpl(CloudABC):
                 log.debug(e)
                 return False
             # make sure async operation succeeds
-            if not self._wait_for_async(result.request_id, 30, 30):
+            if not self._wait_for_async(result.request_id, 30, 60):
                 m = '_wait_for_async fail'
                 self._user_operation_commit('update_virtual_machine', 'fail', m)
                 log.debug(m)
                 return False
             # make sure role is ready
             if not self._wait_for_role(cloud_service['service_name'], deployment['deployment_name'],
-                                       update_virtual_machine['role_name'], 30, 30):
+                                       update_virtual_machine['role_name'], 30, 60):
                 m = 'virtual machine %s updated but not ready' % update_virtual_machine['role_name']
                 self._user_operation_commit('update_virtual_machine', 'fail', m)
                 log.debug(m)
@@ -308,7 +308,7 @@ class AzureImpl(CloudABC):
                     log.debug(e)
                     return False
                 # make sure async operation succeeds
-                if not self._wait_for_async(result.request_id, 30, 30):
+                if not self._wait_for_async(result.request_id, 30, 60):
                     m = '_wait_for_async fail'
                     self._user_operation_commit('delete_deployment', 'fail', m)
                     self._user_operation_commit('delete_virtual_machine', 'fail', m)
@@ -353,7 +353,7 @@ class AzureImpl(CloudABC):
                     log.debug(e)
                     return False
                 # make sure async operation succeeds
-                if not self._wait_for_async(result.request_id, 30, 30):
+                if not self._wait_for_async(result.request_id, 30, 60):
                     m = '_wait_for_async fail'
                     self._user_operation_commit('delete_virtual_machine', 'fail', m)
                     log.debug(m)
@@ -418,7 +418,7 @@ class AzureImpl(CloudABC):
                 log.debug(e)
                 return False
             # make sure async operation succeeds
-            if not self._wait_for_async(result.request_id, 30, 30):
+            if not self._wait_for_async(result.request_id, 30, 60):
                 m = '_wait_for_async fail'
                 self._user_operation_commit('_create_storage_account', 'fail', m)
                 log.debug(m)
@@ -477,7 +477,7 @@ class AzureImpl(CloudABC):
 
     def _wait_for_async(self, request_id, second_per_loop, loop):
         """
-        Wait for async operation, up tp second_per_loop * loop
+        Wait for async operation, up to second_per_loop * loop
         :param request_id:
         :return:
         """
@@ -670,7 +670,7 @@ class AzureImpl(CloudABC):
                         log.debug(e)
                         return False
                     # make sure async operation succeeds
-                    if not self._wait_for_async(result.request_id, 30, 30):
+                    if not self._wait_for_async(result.request_id, 30, 60):
                         m = '_wait_for_async fail'
                         self._user_operation_commit('_create_virtual_machines_role', 'fail', m)
                         self._vm_endpoint_rollback(cs)
@@ -678,7 +678,7 @@ class AzureImpl(CloudABC):
                         return False
                     # make sure role is ready
                     if not self._wait_for_role(cloud_service['service_name'], deployment['deployment_name'],
-                                               virtual_machine['role_name'], 30, 30):
+                                               virtual_machine['role_name'], 30, 60):
                         m = 'virtual machine %s created but not ready' % virtual_machine['role_name']
                         self._user_operation_commit('_create_virtual_machines_role', 'fail', m)
                         self._vm_endpoint_rollback(cs)
@@ -722,7 +722,7 @@ class AzureImpl(CloudABC):
                     log.debug(e)
                     return False
                 # make sure async operation succeeds
-                if not self._wait_for_async(result.request_id, 30, 30):
+                if not self._wait_for_async(result.request_id, 30, 60):
                     m = '_wait_for_async fail'
                     self._user_operation_commit('_create_virtual_machines_deployment', 'fail', m)
                     self._user_operation_commit('_create_virtual_machines_role', 'fail', m)
@@ -730,7 +730,7 @@ class AzureImpl(CloudABC):
                     log.debug(m)
                     return False
                 # make sure deployment is ready
-                if not self._wait_for_deployment(cloud_service['service_name'], deployment['deployment_name'], 30, 30):
+                if not self._wait_for_deployment(cloud_service['service_name'], deployment['deployment_name'], 30, 60):
                     m = 'deployment %s created but not ready' % deployment['deployment_name']
                     self._user_operation_commit('_create_virtual_machines_deployment', 'fail', m)
                     self._vm_endpoint_rollback(cs)
@@ -741,7 +741,7 @@ class AzureImpl(CloudABC):
                     self._user_operation_commit('_create_virtual_machines_deployment', 'end')
                 # make sure role is ready
                 if not self._wait_for_role(cloud_service['service_name'], deployment['deployment_name'],
-                                           virtual_machine['role_name'], 30, 30):
+                                           virtual_machine['role_name'], 30, 60):
                     m = 'virtual machine %s created but not ready' % virtual_machine['role_name']
                     self._user_operation_commit('_create_virtual_machines_role', 'fail', m)
                     self._vm_endpoint_rollback(cs)
@@ -848,7 +848,7 @@ class AzureImpl(CloudABC):
 
     def _wait_for_deployment(self, service_name, deployment_name, second_per_loop, loop, status='Running'):
         """
-        Wait for deployment until running
+        Wait for deployment until running, up to second_per_loop * loop
         :param service_name:
         :param deployment_name:
         :param second_per_loop:
@@ -871,7 +871,7 @@ class AzureImpl(CloudABC):
     def _wait_for_role(self, service_name, deployment_name, role_instance_name,
                        second_per_loop, loop, status='ReadyRole'):
         """
-        Wait virtual machine until ready
+        Wait virtual machine until ready, up to second_per_loop * loop
         :param service_name:
         :param deployment_name:
         :param role_instance_name:
