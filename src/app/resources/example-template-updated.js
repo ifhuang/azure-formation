@@ -34,13 +34,13 @@
                     {
                         "name" : "ssh",
                         "protocol" : "tcp",
-                        "port" : "22",
+                        "port" : "122",
                         "local_port" : "22"
                     },
                     {
                         "name" : "http",
                         "protocol" : "tcp",
-                        "port" : "80",
+                        "port" : "180",
                         "local_port" : "80"
                     }
                 ]
@@ -63,7 +63,7 @@
                     {
                         "name" : "http",
                         "protocol" : "tcp",
-                        "port" : "80",
+                        "port" : "181",
                         "local_port" : "80"
                     }
                 ]

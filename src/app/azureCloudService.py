@@ -1,9 +1,15 @@
 __author__ = 'Yifu Huang'
 
 from src.app.azureUtil import *
+from src.app.log import *
+from src.app.database import *
 
 
 class AzureCloudService:
+    """
+    Azure cloud service is used as DNS for azure virtual machines
+    Note that the public ports of virtual machines on the same cloud service cannot conflict
+    """
 
     def __init__(self, sms, user_template, template_config):
         self.sms = sms
@@ -16,27 +22,27 @@ class AzureCloudService:
         Else check whether it created by this function before
         :return:
         """
-        user_operation_commit(CREATE_CLOUD_SERVICE, START)
+        user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, START)
         cloud_service = self.template_config['cloud_service']
         # avoid duplicate cloud service
-        if not self.__cloud_service_exists(cloud_service['service_name']):
+        if not self.cloud_service_exists(cloud_service['service_name']):
             try:
                 self.sms.create_hosted_service(service_name=cloud_service['service_name'],
                                                label=cloud_service['label'],
                                                location=cloud_service['location'])
             except Exception as e:
-                user_operation_commit(CREATE_CLOUD_SERVICE, FAIL, e.message)
+                user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, FAIL, e.message)
                 log.debug(e)
                 return False
             # make sure cloud service is created
-            if not self.__cloud_service_exists(cloud_service['service_name']):
+            if not self.cloud_service_exists(cloud_service['service_name']):
                 m = '%s %s created but not exist' % (CLOUD_SERVICE, ['service_name'])
-                user_operation_commit(CREATE_CLOUD_SERVICE, FAIL, m)
+                user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, FAIL, m)
                 log.debug(m)
                 return False
             else:
-                user_resource_commit(CLOUD_SERVICE,  cloud_service['service_name'], RUNNING)
-                user_operation_commit(CREATE_CLOUD_SERVICE, END)
+                user_resource_commit(self.user_template, CLOUD_SERVICE,  cloud_service['service_name'], RUNNING)
+                user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, END)
         else:
             # check whether cloud service created by this function before
             if UserResource.query.filter_by(user_template=self.user_template,
@@ -45,18 +51,16 @@ class AzureCloudService:
                                             status=RUNNING).count() == 0:
                 m = '%s %s exist but not created by this function before' %\
                     (CLOUD_SERVICE, cloud_service['service_name'])
-                user_operation_commit(CREATE_CLOUD_SERVICE, FAIL, m)
+                user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, FAIL, m)
                 log.debug(m)
                 return False
             else:
                 m = '%s %s exist and created by this function before' % (CLOUD_SERVICE, cloud_service['service_name'])
-                user_operation_commit(CREATE_CLOUD_SERVICE, END, m)
+                user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, END, m)
                 log.debug(m)
         return True
 
-    # --------------------------------------------helper function-------------------------------------------- #
-
-    def __cloud_service_exists(self, name):
+    def cloud_service_exists(self, name):
         """
         Check whether specific cloud service exist
         :param name:
