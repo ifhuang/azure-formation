@@ -14,7 +14,6 @@ DEPLOYMENT = 'deployment'
 VIRTUAL_MACHINE = 'virtual machine'
 # resource status
 RUNNING = 'Running'
-DELETED = 'Deleted'
 READY_ROLE = 'ReadyRole'
 # operation name
 CREATE = 'create'

@@ -8,6 +8,7 @@ import datetime
 class AzureVirtualMachines:
     """
     Azure virtual machines are a collection of deployment and virtual machine on the deployment
+    Currently the status of deployment and virtual machine in database is only RUNNING
     """
 
     def __init__(self, sms, user_template, template_config):
@@ -30,8 +31,7 @@ class AzureVirtualMachines:
         cloud_service = self.template_config['cloud_service']
         deployment = self.template_config['deployment']
         virtual_machines = self.template_config['virtual_machines']
-        cs = UserResource.query.filter_by(user_template=self.user_template, type=CLOUD_SERVICE,
-                                          name=cloud_service['service_name'], status=RUNNING).first()
+        cs = UserResource.query.filter_by(type=CLOUD_SERVICE, name=cloud_service['service_name']).first()
         if cs is None:
             m = '%s %s not running in database now' % (CLOUD_SERVICE, cloud_service['service_name'])
             user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINES, FAIL, m)
@@ -75,39 +75,39 @@ class AzureVirtualMachines:
                                                   port, input_endpoint['local_port']))
             # avoid duplicate deployment
             if self.deployment_exists(cloud_service['service_name'], deployment['deployment_name']):
-                if UserResource.query.filter_by(user_template=self.user_template, type=DEPLOYMENT,
-                                                name=deployment['deployment_name'], status=RUNNING,
+                if UserResource.query.filter_by(type=DEPLOYMENT, name=deployment['deployment_name'],
                                                 cloud_service_id=cs.id).count() == 0:
                     m = '%s %s exist but not created by this function before' %\
                         (DEPLOYMENT, deployment['deployment_name'])
-                    user_operation_commit(self.user_template, CREATE_DEPLOYMENT, FAIL, m)
-                    vm_endpoint_rollback(cs)
-                    log.debug(m)
-                    return False
+                    user_resource_commit(self.user_template, DEPLOYMENT, deployment['deployment_name'], RUNNING, cs.id)
                 else:
                     m = '%s %s exist and created by this function before' %\
                         (DEPLOYMENT, deployment['deployment_name'])
-                    user_operation_commit(self.user_template, CREATE_DEPLOYMENT, END, m)
-                    log.debug(m)
+                user_operation_commit(self.user_template, CREATE_DEPLOYMENT, END, m)
+                log.debug(m)
                 # avoid duplicate role
                 if self.role_exists(cloud_service['service_name'], deployment['deployment_name'],
                                     virtual_machine['role_name']):
                     if UserResource.query.filter_by(user_template=self.user_template, type=VIRTUAL_MACHINE,
-                                                    name=virtual_machine['role_name'], status=RUNNING,
+                                                    name=virtual_machine['role_name'],
                                                     cloud_service_id=cs.id).count() == 0:
-                        m = '%s %s exist but not created by this function before' %\
+                        m = '%s %s exist but not created by this user template before' %\
                             (VIRTUAL_MACHINE, virtual_machine['role_name'])
                         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
                         vm_endpoint_rollback(cs)
                         log.debug(m)
                         return False
                     else:
-                        m = '%s %s exist and created by this function before' %\
+                        m = '%s %s exist and created by this user template before' %\
                             (VIRTUAL_MACHINE, virtual_machine['role_name'])
                         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, END, m)
                         vm_endpoint_rollback(cs)
                         log.debug(m)
                 else:
+                    # delete old virtual machine info in database, cascade delete old vm endpoint and old vm config
+                    UserResource.query.filter_by(type=VIRTUAL_MACHINE, name=virtual_machine['role_name'],
+                                                 cloud_service_id=cs.id).delete()
+                    db.session.commit()
                     try:
                         result = self.sms.add_role(cloud_service['service_name'], deployment['deployment_name'],
                                                    virtual_machine['role_name'], config, os_hd,
@@ -137,24 +137,16 @@ class AzureVirtualMachines:
                         user_resource_commit(self.user_template, VIRTUAL_MACHINE,
                                              virtual_machine['role_name'], RUNNING, cs.id)
                         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, END)
-                        # associate vm endpoint with specific vm
-                        vm = UserResource.query.filter_by(user_template=self.user_template, type=VIRTUAL_MACHINE,
-                                                          name=virtual_machine['role_name'], status=RUNNING,
-                                                          cloud_service_id=cs.id).first()
-                        vm_endpoint_update(cs, vm)
-                        # commit vm config
-                        deploy = self.sms.get_deployment_by_name(cloud_service['service_name'],
-                                                                 deployment['deployment_name'])
-                        for role in deploy.role_instance_list:
-                            # to get private ip
-                            if role.role_name == virtual_machine['role_name']:
-                                public_ip = None
-                                # to get public ip
-                                if role.instance_endpoints is not None:
-                                    public_ip = role.instance_endpoints.instance_endpoints[0].vip
-                                vm_config_commit(vm, deploy.url, public_ip, role.ip_address)
-                                break
+                        self.__vm_info_helper(cs, cloud_service['service_name'], deployment['deployment_name'],
+                                              virtual_machine['role_name'])
             else:
+                # delete old deployment
+                UserResource.query.filter_by(type=DEPLOYMENT, name=deployment['deployment_name'],
+                                             cloud_service_id=cs.id).delete()
+                # delete old virtual machine info in database, cascade delete old vm endpoint and old vm config
+                UserResource.query.filter_by(type=VIRTUAL_MACHINE, name=virtual_machine['role_name'],
+                                             cloud_service_id=cs.id).delete()
+                db.session.commit()
                 try:
                     result = self.sms.create_virtual_machine_deployment(cloud_service['service_name'],
                                                                         deployment['deployment_name'],
@@ -202,23 +194,8 @@ class AzureVirtualMachines:
                     user_resource_commit(self.user_template, VIRTUAL_MACHINE,
                                          virtual_machine['role_name'], RUNNING, cs.id)
                     user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, END)
-                    # associate vm endpoint with specific vm
-                    vm = UserResource.query.filter_by(user_template=self.user_template, type=VIRTUAL_MACHINE,
-                                                      name=virtual_machine['role_name'], status=RUNNING,
-                                                      cloud_service_id=cs.id).first()
-                    vm_endpoint_update(cs, vm)
-                    # commit vm config
-                    deploy = self.sms.get_deployment_by_name(cloud_service['service_name'],
-                                                             deployment['deployment_name'])
-                    for role in deploy.role_instance_list:
-                        # to get private ip
-                        if role.role_name == virtual_machine['role_name']:
-                            public_ip = None
-                            # to get public ip
-                            if role.instance_endpoints is not None:
-                                public_ip = role.instance_endpoints.instance_endpoints[0].vip
-                            vm_config_commit(vm, deploy.url, public_ip, role.ip_address)
-                            break
+                    self.__vm_info_helper(cs, cloud_service['service_name'], deployment['deployment_name'],
+                                          virtual_machine['role_name'])
         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINES, END)
         return True
 
@@ -312,3 +289,28 @@ class AzureVirtualMachines:
             if role_instance.instance_name == role_instance_name:
                 return role_instance.instance_status
         return None
+
+    def __vm_info_helper(self, cs, cs_name, dm_name, vm_name):
+        """
+        Help to complete vm info
+        :param cs:
+        :param cs_name:
+        :param dm_name:
+        :param vm_name:
+        :return:
+        """
+        # associate vm endpoint with specific vm
+        vm = UserResource.query.filter_by(user_template=self.user_template, type=VIRTUAL_MACHINE,
+                                          name=vm_name, cloud_service_id=cs.id).first()
+        vm_endpoint_update(cs, vm)
+        # commit vm config
+        deploy = self.sms.get_deployment_by_name(cs_name, dm_name)
+        for role in deploy.role_instance_list:
+            # to get private ip
+            if role.role_name == vm_name:
+                public_ip = None
+                # to get public ip
+                if role.instance_endpoints is not None:
+                    public_ip = role.instance_endpoints.instance_endpoints[0].vip
+                vm_config_commit(vm, deploy.url, public_ip, role.ip_address)
+                break

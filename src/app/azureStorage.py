@@ -9,6 +9,7 @@ class AzureStorage:
     """
     Azure storage is used for azure virtual machines to store their disks
     Note that the number of azure storage account of user may have a small limit
+    Currently the status of storage in database is only RUNNING
     """
 
     def __init__(self, sms, user_template, template_config):
@@ -26,6 +27,9 @@ class AzureStorage:
         storage_account = self.template_config['storage_account']
         # avoid duplicate storage account
         if not self.__storage_account_exists(storage_account['service_name']):
+            # delete old info in database
+            UserResource.query.filter_by(type=STORAGE_ACCOUNT, name=storage_account['service_name']).delete()
+            db.session.commit()
             try:
                 result = self.sms.create_storage_account(storage_account['service_name'],
                                                          storage_account['description'],
@@ -52,20 +56,17 @@ class AzureStorage:
                 user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, END)
         else:
             # check whether storage account created by this function before
-            if UserResource.query.filter_by(user_template=self.user_template,
-                                            type=STORAGE_ACCOUNT,
-                                            name=storage_account['service_name'],
-                                            status=RUNNING).count() == 0:
+            if UserResource.query.filter_by(type=STORAGE_ACCOUNT, name=storage_account['service_name']).count() == 0:
                 m = '%s %s exist but not created by this function before' %\
                     (STORAGE_ACCOUNT, storage_account['service_name'])
-                user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, FAIL, m)
-                log.debug(m)
-                return False
+                user_resource_commit(self.user_template, STORAGE_ACCOUNT, storage_account['service_name'], RUNNING)
+
             else:
                 m = '%s %s exist and created by this function before' %\
                     (STORAGE_ACCOUNT, storage_account['service_name'])
-                user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, END, m)
-                log.debug(m)
+
+            user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, END, m)
+            log.debug(m)
         return True
 
     # --------------------------------------------helper function-------------------------------------------- #

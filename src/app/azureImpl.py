@@ -5,7 +5,6 @@ from src.app.azureStorage import *
 from src.app.azureCloudService import *
 from src.app.azureVirtualMachines import *
 from azure.servicemanagement import *
-import json
 import os
 import commands
 
@@ -13,7 +12,8 @@ import commands
 class AzureImpl(CloudABC):
     """
     Azure cloud service management
-    For logic: manage only resources created by this program itself
+    For logic: besides resources created by this program itself, it can reuse other storage,
+    container, cloud service and deployment exist in azure (by sync them into database)
     For template: one storage account, one container, one cloud service, one deployment,
     multiple virtual machines (Windows/Linux), multiple input endpoints
     """
@@ -129,11 +129,8 @@ class AzureImpl(CloudABC):
         cloud_service = self.template_config['cloud_service']
         deployment = self.template_config['deployment']
         virtual_machines = self.template_config['virtual_machines']
-        cs = UserResource.query.filter_by(user_template=self.user_template,
-                                          type=CLOUD_SERVICE,
-                                          name=cloud_service['service_name'],
-                                          status=RUNNING).first()
-        if not self.__resource_check(cs, cloud_service, deployment, virtual_machines, UPDATE):
+        cs = self.__resource_check(cloud_service, deployment, virtual_machines, UPDATE)
+        if cs is None:
             return False
         # now check done, begin update
         update_virtual_machines = self.update_template_config['virtual_machines']
@@ -144,8 +141,7 @@ class AzureImpl(CloudABC):
             network.configuration_set_type = network_config['configuration_set_type']
             input_endpoints = network_config['input_endpoints']
             vm = UserResource.query.filter_by(user_template=self.user_template, type=VIRTUAL_MACHINE,
-                                              name=update_virtual_machine['role_name'], status=RUNNING,
-                                              cloud_service_id=cs.id).first()
+                                              name=update_virtual_machine['role_name'], cloud_service_id=cs.id).first()
             old_endpoints = VMEndpoint.query.filter_by(virtual_machine=vm).all()
             new_endpoints = []
             for input_endpoint in input_endpoints:
@@ -186,7 +182,7 @@ class AzureImpl(CloudABC):
                 user_operation_commit(self.user_template, UPDATE_VIRTUAL_MACHINE, FAIL, m)
                 log.debug(m)
                 return False
-            # replace old endpoints with new endpoints
+            # update vm endpoint: replace old endpoints with new endpoints
             for old_endpoint in old_endpoints:
                 db.session.delete(old_endpoint)
             for new_endpoint in new_endpoints:
@@ -209,7 +205,7 @@ class AzureImpl(CloudABC):
 
     def delete(self, user_template):
         """
-        Delete a virtual machine according to given user template (assume all fields needed are in template)
+        Delete virtual machines according to given user template (assume all fields needed are in template)
         If deployment has only a virtual machine, then delete a virtual machine with deployment
         Else delete a virtual machine from deployment
         :param user_template:
@@ -223,10 +219,8 @@ class AzureImpl(CloudABC):
         cloud_service = self.template_config['cloud_service']
         deployment = self.template_config['deployment']
         virtual_machines = self.template_config['virtual_machines']
-        # make sure cloud service exist in database
-        cs = UserResource.query.filter_by(user_template=self.user_template, type=CLOUD_SERVICE,
-                                          name=cloud_service['service_name'], status=RUNNING).first()
-        if not self.__resource_check(cs, cloud_service, deployment, virtual_machines, DELETE):
+        cs = self.__resource_check(cloud_service, deployment, virtual_machines, DELETE)
+        if cs is None:
             return False
         # now check done, begin update
         for virtual_machine in virtual_machines:
@@ -257,10 +251,9 @@ class AzureImpl(CloudABC):
                     log.debug(m)
                     return False
                 else:
-                    dm = UserResource.query.filter_by(user_template=user_template, type=DEPLOYMENT,
-                                                      name=deployment['deployment_name'], status=RUNNING,
-                                                      cloud_service_id=cs.id).first()
-                    dm.status = DELETED
+                    # delete deployment
+                    UserResource.query.filter_by(user_template=user_template, type=DEPLOYMENT,
+                                                 name=deployment['deployment_name'], cloud_service_id=cs.id).delete()
                     db.session.commit()
                     user_operation_commit(self.user_template, DELETE_DEPLOYMENT, END)
                 # make sure virtual machine not exist
@@ -272,12 +265,9 @@ class AzureImpl(CloudABC):
                     log.debug(m)
                     return False
                 else:
-                    vm = UserResource.query.filter_by(user_template=user_template, type=VIRTUAL_MACHINE,
-                                                      name=virtual_machine['role_name'], status=RUNNING,
-                                                      cloud_service_id=cs.id).first()
-                    VMEndpoint.query.filter_by(virtual_machine=vm).delete()
-                    VMConfig.query.filter_by(virtual_machine=vm).delete()
-                    vm.status = DELETED
+                    # delete vm, cascade delete vm endpoint and vm config
+                    UserResource.query.filter_by(user_template=user_template, type=VIRTUAL_MACHINE,
+                                                 name=virtual_machine['role_name'], cloud_service_id=cs.id).delete()
                     db.session.commit()
                     user_operation_commit(self.user_template, DELETE_VIRTUAL_MACHINE, END)
             else:
@@ -304,12 +294,9 @@ class AzureImpl(CloudABC):
                     log.debug(m)
                     return False
                 else:
-                    vm = UserResource.query.filter_by(user_template=user_template, type=VIRTUAL_MACHINE,
-                                                      name=virtual_machine['role_name'], status=RUNNING,
-                                                      cloud_service_id=cs.id).first()
-                    VMEndpoint.query.filter_by(virtual_machine=vm).delete()
-                    VMConfig.query.filter_by(virtual_machine=vm).delete()
-                    vm.status = DELETED
+                    # delete vm, cascade delete vm endpoint and vm config
+                    UserResource.query.filter_by(user_template=user_template, type=VIRTUAL_MACHINE,
+                                                 name=virtual_machine['role_name'], cloud_service_id=cs.id).delete()
                     db.session.commit()
                     user_operation_commit(self.user_template, DELETE_VIRTUAL_MACHINE, END)
         user_operation_commit(self.user_template, DELETE, END)
@@ -317,53 +304,39 @@ class AzureImpl(CloudABC):
 
     # --------------------------------------------helper function-------------------------------------------- #
 
-    def __resource_check(self, cs, cloud_service, deployment, virtual_machines, operation):
+    def __resource_check(self, cloud_service, deployment, virtual_machines, operation):
         """
-        Check whether specific cloud service, deployment and virtual machine are in database and azure
+        Check whether specific cloud service, deployment and virtual machine are in azure and database
         This function is used for update and delete operation
         :return:
         """
-        # make sure cloud service exist in database
-        if cs is None:
-            m = '%s %s not exist in database' % (CLOUD_SERVICE, cloud_service['service_name'])
-            user_operation_commit(self.user_template, operation, FAIL, m)
-            log.debug(m)
-            return False
         # make sure cloud service exist in azure
         if not AzureCloudService(self.sms, self.user_template, self.template_config)\
                 .cloud_service_exists(cloud_service['service_name']):
             m = '%s %s not exist in azure' % (CLOUD_SERVICE, cloud_service['service_name'])
             user_operation_commit(self.user_template, operation, FAIL, m)
             log.debug(m)
-            return False
-        # make sure deployment exist in database
-        if UserResource.query.filter_by(user_template=self.user_template,
-                                        type=DEPLOYMENT,
-                                        name=deployment['deployment_name'],
-                                        status=RUNNING,
-                                        cloud_service_id=cs.id).count() == 0:
-            m = '%s %s not exist in database' % (DEPLOYMENT, deployment['deployment_name'])
-            user_operation_commit(self.user_template, operation, FAIL, m)
+            return None
+        # make sure cloud service exist in database
+        if UserResource.query.filter_by(type=CLOUD_SERVICE, name=cloud_service['service_name']).count() == 0:
+            m = '%s %s not exist in database' % (CLOUD_SERVICE, cloud_service['service_name'])
             log.debug(m)
-            return False
+            user_resource_commit(self.user_template, CLOUD_SERVICE, cloud_service['service_name'], RUNNING)
+        cs = UserResource.query.filter_by(type=CLOUD_SERVICE, name=cloud_service['service_name']).first()
         # make sure deployment exist in azure
         if not AzureVirtualMachines(self.sms, self.user_template, self.template_config).\
                 deployment_exists(cloud_service['service_name'], deployment['deployment_name']):
             m = '%s %s not exist in azure' % (DEPLOYMENT, deployment['deployment_name'])
             user_operation_commit(self.user_template, operation, FAIL, m)
             log.debug(m)
-            return False
+            return None
+        # make sure deployment exist in database
+        if UserResource.query.filter_by(type=DEPLOYMENT, name=deployment['deployment_name'],
+                                        cloud_service_id=cs.id).count() == 0:
+            m = '%s %s not exist in database' % (DEPLOYMENT, deployment['deployment_name'])
+            log.debug(m)
+            user_resource_commit(self.user_template, DEPLOYMENT, deployment['deployment_name'], RUNNING)
         for virtual_machine in virtual_machines:
-            # make sure virtual machine exist in database
-            if UserResource.query.filter_by(user_template=self.user_template,
-                                            type=VIRTUAL_MACHINE,
-                                            name=virtual_machine['role_name'],
-                                            status=RUNNING,
-                                            cloud_service_id=cs.id).count() == 0:
-                m = '%s %s not exist in database' % (VIRTUAL_MACHINE, virtual_machine['role_name'])
-                user_operation_commit(self.user_template, operation, FAIL, m)
-                log.debug(m)
-                return False
             # make sure virtual machine exist in azure
             if not AzureVirtualMachines(self.sms, self.user_template, self.template_config).\
                     role_exists(cloud_service['service_name'], deployment['deployment_name'],
@@ -371,8 +344,17 @@ class AzureImpl(CloudABC):
                 m = '%s %s not exist in azure' % (VIRTUAL_MACHINE, virtual_machine['role_name'])
                 user_operation_commit(self.user_template, operation, FAIL, m)
                 log.debug(m)
-                return False
-        return True
+                return None
+            # make sure virtual machine of user template exist in database
+            if UserResource.query.filter_by(user_template=self.user_template,
+                                            type=VIRTUAL_MACHINE,
+                                            name=virtual_machine['role_name'],
+                                            cloud_service_id=cs.id).count() == 0:
+                m = '%s %s not exist in database' % (VIRTUAL_MACHINE, virtual_machine['role_name'])
+                user_operation_commit(self.user_template, operation, FAIL, m)
+                log.debug(m)
+                return None
+        return cs
 
     def __cmp_network_config(self, configuration_sets, network2):
         """

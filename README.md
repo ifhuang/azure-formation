@@ -1,8 +1,12 @@
 # Azure Auto Deploy
 
-Azure Auto Deploy offers Open Hackathon users an automated way to manage related Azure resources, including cloud
-service, storage, deployment and virtual machine. Users can use public or private templates to describe Azure
+- Azure Auto Deploy offers Open Hackathon users an automated way to manage related Azure resources, including storage,
+container, cloud service, deployment and virtual machine. Users can use public or private templates to describe Azure
 resources. Azure Auto Deploy creates, updates or deletes Azure resources in templates according to users' requests.
+- For logic: besides resources created by Azure Auto Deploy, it can reuse other storage, container, cloud service
+and deployment exist in Azure (by sync them into database)
+- For template: one storage account, one container, one cloud service, one deployment, multiple virtual machines
+(Windows/Linux), multiple input endpoints
 
 # Archive
 

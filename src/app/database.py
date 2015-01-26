@@ -36,7 +36,7 @@ class UserKey(db.Model):
     management_host = db.Column(db.String(100))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
-    user_info_id = db.Column(db.Integer, db.ForeignKey('user_info.id'))
+    user_info_id = db.Column(db.Integer, db.ForeignKey('user_info.id', ondelete='CASCADE'))
     user_info = db.relationship('UserInfo', backref=db.backref('user_key', lazy='dynamic'))
 
     def __init__(self, user_info, cert_url, pem_url, subscription_id, management_host, create_time=None,
@@ -76,9 +76,9 @@ class UserTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
-    user_info_id = db.Column(db.Integer, db.ForeignKey('user_info.id'))
+    user_info_id = db.Column(db.Integer, db.ForeignKey('user_info.id', ondelete='CASCADE'))
     user_info = db.relationship('UserInfo', backref=db.backref('user_template', lazy='dynamic'))
-    template_id = db.Column(db.Integer, db.ForeignKey('template.id'))
+    template_id = db.Column(db.Integer, db.ForeignKey('template.id', ondelete='CASCADE'))
     template = db.relationship('Template', backref=db.backref('user_template', lazy='dynamic'))
 
     def __init__(self, user_info, template, create_time=None, last_modify_time=None):
@@ -98,7 +98,7 @@ class UserOperation(db.Model):
     status = db.Column(db.String(50))
     note = db.Column(db.String(500))
     exec_time = db.Column(db.DateTime)
-    user_template_id = db.Column(db.Integer, db.ForeignKey('user_template.id'))
+    user_template_id = db.Column(db.Integer, db.ForeignKey('user_template.id', ondelete='CASCADE'))
     user_template = db.relationship('UserTemplate', backref=db.backref('user_operation', lazy='dynamic'))
 
     def __init__(self, user_template, operation, status, note=None, exec_time=None):
@@ -118,9 +118,10 @@ class UserResource(db.Model):
     status = db.Column(db.String(50))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
-    user_template_id = db.Column(db.Integer, db.ForeignKey('user_template.id'))
+    user_template_id = db.Column(db.Integer, db.ForeignKey('user_template.id', ondelete='CASCADE'))
     user_template = db.relationship('UserTemplate', backref=db.backref('user_resource1', lazy='dynamic'))
-    cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))  # for deployment and virtual machine
+    # for deployment and virtual machine
+    cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id', ondelete='CASCADE'))
 
     def __init__(self, user_template, type, name, status, cloud_service_id, create_time=None, last_modify_time=None):
         if create_time is None:
@@ -145,10 +146,10 @@ class VMEndpoint(db.Model):
     private_port = db.Column(db.Integer)
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
-    cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
+    cloud_service_id = db.Column(db.Integer, db.ForeignKey('user_resource.id', ondelete='CASCADE'))
     cloud_service = db.relationship('UserResource', foreign_keys=[cloud_service_id],
                                     backref=db.backref('vm_endpoint1', lazy='dynamic'))
-    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
+    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('user_resource.id', ondelete='CASCADE'))
     virtual_machine = db.relationship('UserResource', foreign_keys=[virtual_machine_id],
                                       backref=db.backref('vm_endpoint2', lazy='dynamic'))
 
@@ -176,7 +177,7 @@ class VMConfig(db.Model):
     private_ip = db.Column(db.String(50))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
-    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('user_resource.id'))
+    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('user_resource.id', ondelete='CASCADE'))
     virtual_machine = db.relationship('UserResource', backref=db.backref('vm_config', lazy='dynamic'))
 
     def __init__(self, virtual_machine, dns, public_ip, private_ip, create_time=None, last_modify_time=None):

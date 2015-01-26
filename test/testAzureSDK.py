@@ -41,4 +41,10 @@ def list_like():
     db.session.add(user_resource)
     db.session.commit()
 
-list_like()
+
+def cascade_delete():
+    UserResource.query.filter_by(type='cloud service').delete()
+    db.session.commit()
+
+
+cascade_delete()

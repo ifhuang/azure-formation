@@ -9,6 +9,7 @@ class AzureCloudService:
     """
     Azure cloud service is used as DNS for azure virtual machines
     Note that the public ports of virtual machines on the same cloud service cannot conflict
+    Currently the status of cloud service in database is only RUNNING
     """
 
     def __init__(self, sms, user_template, template_config):
@@ -26,6 +27,10 @@ class AzureCloudService:
         cloud_service = self.template_config['cloud_service']
         # avoid duplicate cloud service
         if not self.cloud_service_exists(cloud_service['service_name']):
+            # delete old cloud service info in database, cascade delete old deployment, old virtual machine,
+            # old vm endpoint and old vm config
+            UserResource.query.filter_by(type=CLOUD_SERVICE, name=cloud_service['service_name']).delete()
+            db.session.commit()
             try:
                 self.sms.create_hosted_service(service_name=cloud_service['service_name'],
                                                label=cloud_service['label'],
@@ -45,19 +50,14 @@ class AzureCloudService:
                 user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, END)
         else:
             # check whether cloud service created by this function before
-            if UserResource.query.filter_by(user_template=self.user_template,
-                                            type=CLOUD_SERVICE,
-                                            name=cloud_service['service_name'],
-                                            status=RUNNING).count() == 0:
+            if UserResource.query.filter_by(type=CLOUD_SERVICE, name=cloud_service['service_name']).count() == 0:
                 m = '%s %s exist but not created by this function before' %\
                     (CLOUD_SERVICE, cloud_service['service_name'])
-                user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, FAIL, m)
-                log.debug(m)
-                return False
+                user_resource_commit(self.user_template, CLOUD_SERVICE,  cloud_service['service_name'], RUNNING)
             else:
                 m = '%s %s exist and created by this function before' % (CLOUD_SERVICE, cloud_service['service_name'])
-                user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, END, m)
-                log.debug(m)
+            user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, END, m)
+            log.debug(m)
         return True
 
     def cloud_service_exists(self, name):
