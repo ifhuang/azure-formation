@@ -1,4 +1,5 @@
 {
+    "expr_name": "azure vm test 2",
     "description" : "one storage account, one container, one cloud service, one deployment, multiple virtual machines (Windows/Linux), multiple input endpoints",
     "storage_account" : {
         "service_name" : "yifu0storage",
@@ -17,8 +18,9 @@
         "deployment_name" : "yifu-test-deployment-name",
         "deployment_slot" : "production"
     },
-    "virtual_machines" : [
+    "virtual_environments": [
         {
+            "provider": "azure",
             "label" : "yifu-test-label",
             "role_name" : "yifu-test-role-name",
             "system_config" : {
@@ -34,20 +36,21 @@
                     {
                         "name" : "ssh",
                         "protocol" : "tcp",
-                        "port" : "22",
+                        "port" : "122",
                         "local_port" : "22"
                     },
                     {
                         "name" : "http",
                         "protocol" : "tcp",
-                        "port" : "80",
+                        "port" : "180",
                         "local_port" : "80"
                     }
                 ]
             },
-            "role_size" : "Medium"
+            "role_size" : "Small"
         },
         {
+            "provider": "azure",
             "label" : "yifu-test-label-2",
             "role_name" : "yifu-test-role-name-2",
             "system_config" : {
@@ -63,12 +66,12 @@
                     {
                         "name" : "http",
                         "protocol" : "tcp",
-                        "port" : "80",
+                        "port" : "181",
                         "local_port" : "80"
                     }
                 ]
             },
-            "role_size" : "Medium"
+            "role_size" : "Small"
         }
     ]
 }

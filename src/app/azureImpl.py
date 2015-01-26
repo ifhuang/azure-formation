@@ -96,7 +96,9 @@ class AzureImpl(CloudABC):
         :param user_template:
         :return: Whether a virtual machines are created
         """
-        if not self.__load_template(user_template):
+        self.user_template = user_template
+        self.template_config = load_template(user_template)
+        if self.template_config is None:
             return False
         if not AzureStorage(self.sms, self.user_template, self.template_config).create_storage_account():
             return False
@@ -116,9 +118,12 @@ class AzureImpl(CloudABC):
         :param update_template:
         :return: Whether virtual machines are updated
         """
-        if not self.__load_template(user_template):
+        self.user_template = user_template
+        self.template_config = load_template(user_template)
+        if self.template_config is None:
             return False
-        if not self.__load_update_template(update_template):
+        self.update_template_config = load_template(update_template)
+        if self.update_template_config is None:
             return False
         user_operation_commit(self.user_template, UPDATE, START)
         cloud_service = self.template_config['cloud_service']
@@ -210,7 +215,9 @@ class AzureImpl(CloudABC):
         :param user_template:
         :return: Whether a virtual machine is deleted
         """
-        if not self.__load_template(user_template):
+        self.user_template = user_template
+        self.template_config = load_template(user_template)
+        if self.template_config is None:
             return False
         user_operation_commit(self.user_template, DELETE, START)
         cloud_service = self.template_config['cloud_service']
@@ -309,43 +316,6 @@ class AzureImpl(CloudABC):
         return True
 
     # --------------------------------------------helper function-------------------------------------------- #
-
-    def __load_template(self, user_template):
-        """
-        Load json based template into dictionary
-        :param user_template:
-        :return:
-        """
-        self.user_template = user_template
-        # make sure template url exists
-        if os.path.isfile(user_template.template.url):
-            try:
-                self.template_config = json.load(file(user_template.template.url))
-            except Exception as e:
-                log.debug('ugly json format: %s' % e)
-                return False
-        else:
-            log.debug('%s not exist' % user_template.template.url)
-            return False
-        return True
-
-    def __load_update_template(self, update_template):
-        """
-        Load json based template into dictionary
-        :param update_template:
-        :return:
-        """
-        # make sure template url exists
-        if os.path.isfile(update_template.template.url):
-            try:
-                self.update_template_config = json.load(file(update_template.template.url))
-            except Exception as e:
-                log.debug('ugly json format: %s' % e)
-                return False
-        else:
-            log.debug('%s not exist' % update_template.template.url)
-            return False
-        return True
 
     def __resource_check(self, cs, cloud_service, deployment, virtual_machines, operation):
         """

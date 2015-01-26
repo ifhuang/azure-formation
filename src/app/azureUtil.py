@@ -3,6 +3,8 @@ __author__ = 'Yifu Huang'
 from src.app.database import *
 from src.app.log import *
 import time
+import os
+import json
 
 # resource name
 STORAGE_ACCOUNT = 'storage account'
@@ -42,6 +44,17 @@ DEPLOYMENT_TICK = 30
 DEPLOYMENT_LOOP = 60
 VIRTUAL_MACHINE_TICK = 30
 VIRTUAL_MACHINE_LOOP = 60
+# async wait status
+IN_PROGRESS = 'InProgress'
+SUCCEEDED = 'Succeeded'
+# template name
+T_EXPR_NAME = 'expr_name'
+T_STORAGE_ACCOUNT = 'storage_account'
+T_CONTAINER = 'container'
+T_CLOUD_SERVICE = 'cloud_service'
+T_DEPLOYMENT = 'deployment'
+T_VIRTUAL_MACHINES = 'virtual_machines'
+R_VIRTUAL_ENVIRONMENTS = 'virtual_environments'
 
 
 def user_operation_commit(user_template, operation, status, note=None):
@@ -127,15 +140,15 @@ def wait_for_async(sms, request_id, second_per_loop, loop):
     """
     count = 0
     result = sms.get_operation_status(request_id)
-    while result.status == 'InProgress':
-        log.debug('_wait_for_async [%s] loop count [%d]' % (request_id, count))
+    while result.status == IN_PROGRESS:
+        log.debug('%s [%s] loop count [%d]' % (WAIT_FOR_ASYNC, request_id, count))
         count += 1
         if count > loop:
             log.debug('Timed out waiting for async operation to complete.')
             return False
         time.sleep(second_per_loop)
         result = sms.get_operation_status(request_id)
-    if result.status != 'Succeeded':
+    if result.status != SUCCEEDED:
         log.debug(vars(result))
         if result.error:
             log.debug(result.error.code)
@@ -143,3 +156,28 @@ def wait_for_async(sms, request_id, second_per_loop, loop):
         log.debug('Asynchronous operation did not succeed.')
         return False
     return True
+
+
+def load_template(user_template):
+    """
+    Load json based template into dictionary
+    :param user_template:
+    :return:
+    """
+    # make sure template url exists
+    if os.path.isfile(user_template.template.url):
+        try:
+            raw_template = json.load(file(user_template.template.url))
+        except Exception as e:
+            log.debug('ugly json format: %s' % e)
+            return None
+    else:
+        log.debug('%s not exist' % user_template.template.url)
+        return None
+    template_config = {T_EXPR_NAME: raw_template[T_EXPR_NAME],
+                       T_STORAGE_ACCOUNT: raw_template[T_STORAGE_ACCOUNT],
+                       T_CONTAINER: raw_template[T_CONTAINER],
+                       T_CLOUD_SERVICE: raw_template[T_CLOUD_SERVICE],
+                       T_DEPLOYMENT: raw_template[T_DEPLOYMENT],
+                       T_VIRTUAL_MACHINES: raw_template[R_VIRTUAL_ENVIRONMENTS]}
+    return template_config
