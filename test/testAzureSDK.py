@@ -47,4 +47,9 @@ def cascade_delete():
     db.session.commit()
 
 
-cascade_delete()
+def like():
+    operation = 'update'
+    uo = UserOperation.query.filter(UserOperation.operation.like(operation+'%')).all()
+    print uo
+
+like()

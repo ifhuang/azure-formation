@@ -45,7 +45,7 @@ class CloudABC:
         pass
 
     @abstractmethod
-    def create(self, user_template):
+    def create_async(self, user_template):
         """
         Create virtual machines according to give user template
         :param user_template:
@@ -54,7 +54,7 @@ class CloudABC:
         pass
 
     @abstractmethod
-    def update(self, user_template, update_template):
+    def update_async(self, user_template, update_template):
         """
         Update virtual machines created by user template according to given update template
         :param user_template:
@@ -63,7 +63,34 @@ class CloudABC:
         pass
 
     @abstractmethod
-    def delete(self, user_template):
+    def delete_async(self, user_template):
+        """
+        Delete virtual machines according to given user template
+        :param user_template:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def create_sync(self, user_template):
+        """
+        Create virtual machines according to give user template
+        :param user_template:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def update_sync(self, user_template, update_template):
+        """
+        Update virtual machines created by user template according to given update template
+        :param user_template:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def delete_sync(self, user_template):
         """
         Delete virtual machines according to given user template
         :param user_template:

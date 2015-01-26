@@ -4,10 +4,32 @@ from src.app import app
 from src.app.functions import *
 from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime
+import json
 
 app.config["SQLALCHEMY_DATABASE_URI"] = safe_get_config("mysql/connection",
                                                         "mysql://root:root@localhost/azureautodeploy")
 db = SQLAlchemy(app)
+
+
+def to_json(inst, cls):
+    # add your coversions for things like datetime's
+    # and what-not that aren't serializable.
+    convert = dict()
+    convert[db.DateTime] = str
+    d = dict()
+    for c in cls.__table__.columns:
+        v = getattr(inst, c.name)
+        if c.type.__class__ in convert.keys() and v is not None:
+            try:
+                func = convert[c.type.__class__]
+                d[c.name] = func(v)
+            except:
+                d[c.name] = "Error:  Failed to covert using ", str(convert[c.type.__class__])
+        elif v is None:
+            d[c.name] = str()
+        else:
+            d[c.name] = v
+    return json.dumps(d)
 
 
 class UserInfo(db.Model):
@@ -110,6 +132,12 @@ class UserOperation(db.Model):
         self.note = note
         self.exec_time = exec_time
 
+    def json(self):
+        return to_json(self, self.__class__)
+
+    def __repr__(self):
+        return "UserOperation: " + self.json()
+
 
 class UserResource(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -135,6 +163,12 @@ class UserResource(db.Model):
         self.cloud_service_id = cloud_service_id
         self.create_time = create_time
         self.last_modify_time = last_modify_time
+
+    def json(self):
+        return to_json(self, self.__class__)
+
+    def __repr__(self):
+        return "UserResource: " + self.json()
 
 
 class VMEndpoint(db.Model):

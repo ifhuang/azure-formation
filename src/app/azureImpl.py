@@ -7,6 +7,7 @@ from src.app.azureVirtualMachines import *
 from azure.servicemanagement import *
 import os
 import commands
+import thread
 
 
 class AzureImpl(CloudABC):
@@ -85,7 +86,31 @@ class AzureImpl(CloudABC):
             return False
         return True
 
-    def create(self, user_template):
+    def create_async(self, user_template):
+        try:
+            thread.start_new_thread(self.create_sync, (user_template,))
+        except Exception as e:
+            log.debug(e)
+            return False
+        return True
+
+    def update_async(self, user_template, update_template):
+        try:
+            thread.start_new_thread(self.update_sync, (user_template, update_template,))
+        except Exception as e:
+            log.debug(e)
+            return False
+        return True
+
+    def delete_async(self, user_template):
+        try:
+            thread.start_new_thread(self.delete_sync, (user_template,))
+        except Exception as e:
+            log.debug(e)
+            return False
+        return True
+
+    def create_sync(self, user_template):
         """
         Create virtual machines according to given user template (assume all fields needed are in template)
         1. Load template from json into dictionary
@@ -97,7 +122,8 @@ class AzureImpl(CloudABC):
         :return: Whether a virtual machines are created
         """
         self.user_template = user_template
-        self.template_config = load_template(user_template)
+        user_operation_commit(self.user_template, CREATE, START)
+        self.template_config = load_template(user_template, CREATE)
         if self.template_config is None:
             return False
         if not AzureStorage(self.sms, self.user_template, self.template_config).create_storage_account():
@@ -106,9 +132,10 @@ class AzureImpl(CloudABC):
             return False
         if not AzureVirtualMachines(self.sms, self.user_template, self.template_config).create_virtual_machines():
             return False
+        user_operation_commit(self.user_template, CREATE, END)
         return True
 
-    def update(self, user_template, update_template):
+    def update_sync(self, user_template, update_template):
         """
         Update virtual machines created by user template according to given update template
         (assume all fields needed are in template, resources in user template and update template are the same)
@@ -119,13 +146,13 @@ class AzureImpl(CloudABC):
         :return: Whether virtual machines are updated
         """
         self.user_template = user_template
-        self.template_config = load_template(user_template)
+        user_operation_commit(self.user_template, UPDATE, START)
+        self.template_config = load_template(user_template, UPDATE)
         if self.template_config is None:
             return False
-        self.update_template_config = load_template(update_template)
+        self.update_template_config = load_template(update_template, UPDATE)
         if self.update_template_config is None:
             return False
-        user_operation_commit(self.user_template, UPDATE, START)
         cloud_service = self.template_config['cloud_service']
         deployment = self.template_config['deployment']
         virtual_machines = self.template_config['virtual_machines']
@@ -203,7 +230,7 @@ class AzureImpl(CloudABC):
         self.update_template_config = None
         return True
 
-    def delete(self, user_template):
+    def delete_sync(self, user_template):
         """
         Delete virtual machines according to given user template (assume all fields needed are in template)
         If deployment has only a virtual machine, then delete a virtual machine with deployment
@@ -212,10 +239,10 @@ class AzureImpl(CloudABC):
         :return: Whether a virtual machine is deleted
         """
         self.user_template = user_template
-        self.template_config = load_template(user_template)
+        user_operation_commit(self.user_template, DELETE, START)
+        self.template_config = load_template(user_template, DELETE)
         if self.template_config is None:
             return False
-        user_operation_commit(self.user_template, DELETE, START)
         cloud_service = self.template_config['cloud_service']
         deployment = self.template_config['deployment']
         virtual_machines = self.template_config['virtual_machines']

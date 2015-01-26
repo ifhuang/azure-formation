@@ -157,7 +157,7 @@ def wait_for_async(sms, request_id, second_per_loop, loop):
     return True
 
 
-def load_template(user_template):
+def load_template(user_template, operation):
     """
     Load json based template into dictionary
     :param user_template:
@@ -168,10 +168,14 @@ def load_template(user_template):
         try:
             raw_template = json.load(file(user_template.template.url))
         except Exception as e:
-            log.debug('ugly json format: %s' % e)
+            m = 'ugly json format: %s' % e.message
+            user_operation_commit(user_template, CREATE, FAIL, m)
+            log.debug(e)
             return None
     else:
-        log.debug('%s not exist' % user_template.template.url)
+        m = '%s not exist' % user_template.template.url
+        user_operation_commit(user_template, CREATE, FAIL, m)
+        log.debug(m)
         return None
     template_config = {T_EXPR_NAME: raw_template[T_EXPR_NAME],
                        T_STORAGE_ACCOUNT: raw_template[T_STORAGE_ACCOUNT],
@@ -180,3 +184,21 @@ def load_template(user_template):
                        T_DEPLOYMENT: raw_template[T_DEPLOYMENT],
                        T_VIRTUAL_MACHINES: raw_template[R_VIRTUAL_ENVIRONMENTS]}
     return template_config
+
+
+def query_user_operation(user_template, operation):
+    return UserOperation.query.filter_by(user_template=user_template). \
+        filter(UserOperation.operation.like(operation + '%')).all()
+
+
+def query_user_resource(user_template):
+    return UserResource.query.filter_by(user_template=user_template).all()
+
+
+def operation_status(user_template, operation):
+    if UserOperation.query.filter_by(user_template=user_template, status=FAIL). \
+            filter(UserOperation.operation.like(operation + '%')).count() > 0:
+        return FAIL
+    if UserOperation.query.filter_by(user_template=user_template, operation=operation, status=END).count() > 0:
+        return END
+    return START
