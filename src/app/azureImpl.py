@@ -5,9 +5,9 @@ from src.app.azureStorage import *
 from src.app.azureCloudService import *
 from src.app.azureVirtualMachines import *
 from azure.servicemanagement import *
+from multiprocessing import Process
 import os
 import commands
-import thread
 
 
 class AzureImpl(CloudABC):
@@ -88,7 +88,8 @@ class AzureImpl(CloudABC):
 
     def create_async(self, user_template):
         try:
-            thread.start_new_thread(self.create_sync, (user_template,))
+            p = Process(target=self.create_sync, args=(user_template,))
+            p.start()
         except Exception as e:
             log.debug(e)
             return False
@@ -96,7 +97,8 @@ class AzureImpl(CloudABC):
 
     def update_async(self, user_template, update_template):
         try:
-            thread.start_new_thread(self.update_sync, (user_template, update_template,))
+            p = Process(target=self.update_sync, args=(user_template, update_template,))
+            p.start()
         except Exception as e:
             log.debug(e)
             return False
@@ -104,7 +106,8 @@ class AzureImpl(CloudABC):
 
     def delete_async(self, user_template):
         try:
-            thread.start_new_thread(self.delete_sync, (user_template,))
+            p = Process(target=self.delete_sync, args=(user_template,))
+            p.start()
         except Exception as e:
             log.debug(e)
             return False

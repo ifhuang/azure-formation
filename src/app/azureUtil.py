@@ -169,12 +169,12 @@ def load_template(user_template, operation):
             raw_template = json.load(file(user_template.template.url))
         except Exception as e:
             m = 'ugly json format: %s' % e.message
-            user_operation_commit(user_template, CREATE, FAIL, m)
+            user_operation_commit(user_template, operation, FAIL, m)
             log.debug(e)
             return None
     else:
         m = '%s not exist' % user_template.template.url
-        user_operation_commit(user_template, CREATE, FAIL, m)
+        user_operation_commit(user_template, operation, FAIL, m)
         log.debug(m)
         return None
     template_config = {T_EXPR_NAME: raw_template[T_EXPR_NAME],

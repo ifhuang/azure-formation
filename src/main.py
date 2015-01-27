@@ -39,6 +39,11 @@ user_template = UserTemplate.query.filter_by(id=1).first()
 # create virtual machine
 create_async_result = a.create_async(user_template)
 log.debug('create_async: %s' % create_async_result)
+while True:
+    log.debug('greeting from main')
+    time.sleep(60)
+
+"""
 while operation_status(user_template, CREATE) == START:
     log.debug('operation_status loop')
     log.debug(query_user_operation(user_template, CREATE))
@@ -47,3 +52,4 @@ while operation_status(user_template, CREATE) == START:
 log.debug('operation_status: %s' % operation_status(user_template, CREATE))
 log.debug('query_user_operation: %s' % query_user_operation(user_template, CREATE))
 log.debug('query_user_resource: %s' % query_user_resource(user_template))
+"""
