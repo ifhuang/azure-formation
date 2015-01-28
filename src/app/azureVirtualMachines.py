@@ -8,7 +8,8 @@ import datetime
 class AzureVirtualMachines:
     """
     Azure virtual machines are a collection of deployment and virtual machine on the deployment
-    Currently the status of deployment and virtual machine in database is only RUNNING
+    Currently the status of deployment in database is only RUNNING,
+    the status of virtual machine are RUNNING and STOPPED
     """
 
     def __init__(self, sms, user_template, template_config):

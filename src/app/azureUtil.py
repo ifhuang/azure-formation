@@ -14,7 +14,9 @@ DEPLOYMENT = 'deployment'
 VIRTUAL_MACHINE = 'virtual machine'
 # resource status
 RUNNING = 'Running'
+STOPPED = 'Stopped'
 READY_ROLE = 'ReadyRole'
+STOPPED_VM = 'StoppedVM'
 # operation name
 CREATE = 'create'
 CREATE_STORAGE_ACCOUNT = CREATE + ' ' + STORAGE_ACCOUNT
@@ -27,6 +29,8 @@ UPDATE_VIRTUAL_MACHINE = UPDATE + ' ' + VIRTUAL_MACHINE
 DELETE = 'delete'
 DELETE_DEPLOYMENT = DELETE + ' ' + DEPLOYMENT
 DELETE_VIRTUAL_MACHINE = DELETE + ' ' + VIRTUAL_MACHINE
+SHUTDOWN = 'shutdown'
+SHUTDOWN_VIRTUAL_MACHINE = SHUTDOWN + ' ' + VIRTUAL_MACHINE
 # operation status
 START = 'start'
 FAIL = 'fail'
@@ -79,6 +83,15 @@ def user_resource_commit(user_template, type, name, status, cs_id=None):
     """
     user_resource = UserResource(user_template, type, name, status, cs_id)
     db.session.add(user_resource)
+    db.session.commit()
+
+
+def user_resource_status_update(user_template, type, name, status, cs_id=None):
+    ur = UserResource.query.filter_by(user_template=user_template,
+                                      type=type,
+                                      name=name,
+                                      cloud_service_id=cs_id).first()
+    ur.status = status
     db.session.commit()
 
 

@@ -36,13 +36,17 @@ connected = a.connect(user_info)
 log.debug('connect: %s' % connected)
 
 user_template = UserTemplate.query.filter_by(id=1).first()
+showdown_result = a.shutdown_sync(user_template)
+log.debug('showdown_result: %s' % showdown_result)
+
+"""
 # create virtual machine
 create_async_result = a.create_async(user_template)
 log.debug('create_async: %s' % create_async_result)
 while True:
     log.debug('greeting from main')
     time.sleep(60)
-
+"""
 """
 while operation_status(user_template, CREATE) == START:
     log.debug('operation_status loop')

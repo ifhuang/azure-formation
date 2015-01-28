@@ -72,6 +72,15 @@ class CloudABC:
         pass
 
     @abstractmethod
+    def shutdown_async(self, user_template):
+        """
+        Shutdown virtual machines according to given user template
+        :param user_template:
+        :return:
+        """
+        pass
+
+    @abstractmethod
     def create_sync(self, user_template):
         """
         Create virtual machines according to give user template
@@ -93,6 +102,15 @@ class CloudABC:
     def delete_sync(self, user_template):
         """
         Delete virtual machines according to given user template
+        :param user_template:
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def shutdown_sync(self, user_template):
+        """
+        Shutdown virtual machines according to given user template
         :param user_template:
         :return:
         """

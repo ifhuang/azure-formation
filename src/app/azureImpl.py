@@ -113,6 +113,15 @@ class AzureImpl(CloudABC):
             return False
         return True
 
+    def shutdown_async(self, user_template):
+        try:
+            p = Process(target=self.shutdown_sync, args=(user_template,))
+            p.start()
+        except Exception as e:
+            log.debug(e)
+            return False
+        return True
+
     def create_sync(self, user_template):
         """
         Create virtual machines according to given user template (assume all fields needed are in template)
@@ -332,12 +341,59 @@ class AzureImpl(CloudABC):
         user_operation_commit(self.user_template, DELETE, END)
         return True
 
+    def shutdown_sync(self, user_template):
+        """
+        Shutdown virtual machines according to given user template (assume all fields needed are in template)
+        :param user_template:
+        :return:
+        """
+        self.user_template = user_template
+        user_operation_commit(self.user_template, SHUTDOWN, START)
+        self.template_config = load_template(user_template, SHUTDOWN)
+        if self.template_config is None:
+            return False
+        cloud_service = self.template_config['cloud_service']
+        deployment = self.template_config['deployment']
+        virtual_machines = self.template_config['virtual_machines']
+        cs = self.__resource_check(cloud_service, deployment, virtual_machines, SHUTDOWN)
+        if cs is None:
+            return False
+        # now check done, begin
+        for virtual_machine in virtual_machines:
+            user_operation_commit(self.user_template, SHUTDOWN_VIRTUAL_MACHINE, START)
+            try:
+                result = self.sms.shutdown_role(cloud_service['service_name'], deployment['deployment_name'],
+                                                virtual_machine['role_name'])
+            except Exception as e:
+                user_operation_commit(self.user_template, SHUTDOWN_VIRTUAL_MACHINE, FAIL, e.message)
+                log.debug(e)
+                return False
+            # make sure async operation succeeds
+            if not wait_for_async(self.sms, result.request_id, ASYNC_TICK, ASYNC_LOOP):
+                m = WAIT_FOR_ASYNC + ' ' + FAIL
+                user_operation_commit(self.user_template, SHUTDOWN_VIRTUAL_MACHINE, FAIL, m)
+                log.debug(m)
+                return False
+            # make sure role is stopped
+            if not AzureVirtualMachines(self.sms, self.user_template, self.template_config).\
+                    wait_for_role(cloud_service['service_name'], deployment['deployment_name'],
+                                  virtual_machine['role_name'], VIRTUAL_MACHINE_TICK, VIRTUAL_MACHINE_LOOP, STOPPED_VM):
+                m = '%s %s shutdown but not ready' % (VIRTUAL_MACHINE, virtual_machine['role_name'])
+                user_operation_commit(self.user_template, SHUTDOWN_VIRTUAL_MACHINE, FAIL, m)
+                log.debug(m)
+                return False
+            user_resource_status_update(self.user_template, VIRTUAL_MACHINE,
+                                        virtual_machine['role_name'], STOPPED, cs.id)
+            user_operation_commit(self.user_template, SHUTDOWN_VIRTUAL_MACHINE, END)
+        user_operation_commit(self.user_template, SHUTDOWN, END)
+        return True
+
     # --------------------------------------------helper function-------------------------------------------- #
 
     def __resource_check(self, cloud_service, deployment, virtual_machines, operation):
         """
         Check whether specific cloud service, deployment and virtual machine are in azure and database
-        This function is used for update and delete operation
+        This function is used for update, delete and shutdown operation
         :return:
         """
         # make sure cloud service exist in azure
@@ -384,6 +440,19 @@ class AzureImpl(CloudABC):
                 user_operation_commit(self.user_template, operation, FAIL, m)
                 log.debug(m)
                 return None
+            # make sure virtual machine is not already stopped
+            if operation == SHUTDOWN:
+                deploy = self.sms.get_deployment_by_name(cloud_service['service_name'], deployment['deployment_name'])
+                for role_instance in deploy.role_instance_list:
+                    if role_instance.instance_name == virtual_machine['role_name']:
+                        if role_instance.instance_status == STOPPED_VM:
+                            m = '%s is already stopped' % VIRTUAL_MACHINE
+                            user_operation_commit(self.user_template, operation, FAIL, m)
+                            log.debug(m)
+                            return None
+                        break
+                user_resource_status_update(self.user_template, VIRTUAL_MACHINE,
+                                            virtual_machine['role_name'], RUNNING, cs.id)
         return cs
 
     def __cmp_network_config(self, configuration_sets, network2):
