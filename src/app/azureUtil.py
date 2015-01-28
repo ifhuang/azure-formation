@@ -17,6 +17,7 @@ RUNNING = 'Running'
 STOPPED = 'Stopped'
 READY_ROLE = 'ReadyRole'
 STOPPED_VM = 'StoppedVM'
+STOPPED_DEALLOCATED = 'StoppedDeallocated'
 # operation name
 CREATE = 'create'
 CREATE_STORAGE_ACCOUNT = CREATE + ' ' + STORAGE_ACCOUNT

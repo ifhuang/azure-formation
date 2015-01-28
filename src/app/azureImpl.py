@@ -445,7 +445,8 @@ class AzureImpl(CloudABC):
                 deploy = self.sms.get_deployment_by_name(cloud_service['service_name'], deployment['deployment_name'])
                 for role_instance in deploy.role_instance_list:
                     if role_instance.instance_name == virtual_machine['role_name']:
-                        if role_instance.instance_status == STOPPED_VM:
+                        if role_instance.instance_status == STOPPED_VM \
+                                or role_instance.instance_status == STOPPED_DEALLOCATED:
                             m = '%s is already stopped' % VIRTUAL_MACHINE
                             user_operation_commit(self.user_template, operation, FAIL, m)
                             log.debug(m)
