@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.app.azureUtil import *
-from src.app.log import *
-from src.app.database import *
+from src.azureautodeploy.azureUtil import *
+from src.azureautodeploy.log import *
+from src.azureautodeploy.database import *
 
 
 class AzureCloudService:
@@ -29,8 +29,8 @@ class AzureCloudService:
         if not self.cloud_service_exists(cloud_service['service_name']):
             # delete old cloud service info in database, cascade delete old deployment, old virtual machine,
             # old vm endpoint and old vm config
-            UserResource.query.filter_by(type=CLOUD_SERVICE, name=cloud_service['service_name']).delete()
-            db.session.commit()
+            db_adapter.delete_all_objects(UserResource, type=CLOUD_SERVICE, name=cloud_service['service_name'])
+            db_adapter.commit()
             try:
                 self.sms.create_hosted_service(service_name=cloud_service['service_name'],
                                                label=cloud_service['label'],
@@ -50,7 +50,7 @@ class AzureCloudService:
                 user_operation_commit(self.user_template, CREATE_CLOUD_SERVICE, END)
         else:
             # check whether cloud service created by this function before
-            if UserResource.query.filter_by(type=CLOUD_SERVICE, name=cloud_service['service_name']).count() == 0:
+            if db_adapter.count(UserResource, type=CLOUD_SERVICE, name=cloud_service['service_name']) == 0:
                 m = '%s %s exist but not created by this function before' %\
                     (CLOUD_SERVICE, cloud_service['service_name'])
                 user_resource_commit(self.user_template, CLOUD_SERVICE,  cloud_service['service_name'], RUNNING)

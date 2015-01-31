@@ -1,14 +1,15 @@
 __author__ = 'Yifu Huang'
 
-from src.app.database import *
-from src.app.log import *
+from src.azureautodeploy.database import *
+from src.azureautodeploy.database.models import *
+from src.azureautodeploy.log import *
 import os
 import sys
 
 # this is what server need to do
 
 # add public templates to database
-template_dir = 'app/resources'
+template_dir = 'azureautodeploy/resources'
 if not os.path.isdir(template_dir):
     log.error('template dir %s is not exist' % template_dir)
     sys.exit(1)
@@ -18,7 +19,6 @@ if template_files is None:
     sys.exit(1)
 for template_file in template_files:
     template_url = os.getcwd() + os.path.sep + template_dir + os.path.sep + template_file
-    template = Template(template_url, 'public')
-    db.session.add(template)
-    db.session.commit()
+    db_adapter.add_object_kwargs(Template, url=template_url, type='public')
+    db_adapter.commit()
 

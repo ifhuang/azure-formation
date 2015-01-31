@@ -1,7 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.app.database import *
-from src.app.log import *
+from src.azureautodeploy.database import *
+from src.azureautodeploy.database.models import *
+from src.azureautodeploy.log import *
 import time
 import os
 import json
@@ -69,9 +70,12 @@ def user_operation_commit(user_template, operation, status, note=None):
     :param note:
     :return:
     """
-    user_operation = UserOperation(user_template, operation, status, note)
-    db.session.add(user_operation)
-    db.session.commit()
+    db_adapter.add_object_kwargs(UserOperation,
+                                 user_template=user_template,
+                                 operation=operation,
+                                 status=status,
+                                 note=note)
+    db_adapter.commit()
 
 
 def user_resource_commit(user_template, type, name, status, cs_id=None):
@@ -82,18 +86,23 @@ def user_resource_commit(user_template, type, name, status, cs_id=None):
     :param status:
     :return:
     """
-    user_resource = UserResource(user_template, type, name, status, cs_id)
-    db.session.add(user_resource)
-    db.session.commit()
+    db_adapter.add_object_kwargs(UserResource,
+                                 user_template=user_template,
+                                 type=type,
+                                 name=name,
+                                 status=status,
+                                 cloud_service_id=cs_id)
+    db_adapter.commit()
 
 
 def user_resource_status_update(user_template, type, name, status, cs_id=None):
-    ur = UserResource.query.filter_by(user_template=user_template,
+    ur = db_adapter.find_first_object(UserResource,
+                                      user_template_id=user_template.id,
                                       type=type,
                                       name=name,
-                                      cloud_service_id=cs_id).first()
+                                      cloud_service_id=cs_id)
     ur.status = status
-    db.session.commit()
+    db_adapter.commit()
 
 
 def vm_endpoint_commit(name, protocol, port, local_port, cs):
@@ -106,9 +115,13 @@ def vm_endpoint_commit(name, protocol, port, local_port, cs):
     :param cs:
     :return:
     """
-    vm_endpoint = VMEndpoint(name, protocol, port, local_port, cs)
-    db.session.add(vm_endpoint)
-    db.session.commit()
+    db_adapter.add_object_kwargs(VMEndpoint,
+                                 name=name,
+                                 protocol=protocol,
+                                 public_port=port,
+                                 private_port=local_port,
+                                 cloud_service=cs)
+    db_adapter.commit()
 
 
 def vm_endpoint_rollback(cs):
@@ -117,8 +130,8 @@ def vm_endpoint_rollback(cs):
     :param cs:
     :return:
     """
-    VMEndpoint.query.filter_by(cloud_service=cs, virtual_machine=None).delete()
-    db.session.commit()
+    db_adapter.delete_all_objects(VMEndpoint, cloud_service_id=cs.id, virtual_machine_id=None)
+    db_adapter.commit()
 
 
 def vm_endpoint_update(cs, vm):
@@ -128,10 +141,10 @@ def vm_endpoint_update(cs, vm):
     :param vm:
     :return:
     """
-    vm_endpoints = VMEndpoint.query.filter_by(cloud_service=cs, virtual_machine=None).all()
+    vm_endpoints = db_adapter.find_all_objects(VMEndpoint, cloud_service_id=cs.id, virtual_machine_id=None)
     for vm_endpoint in vm_endpoints:
         vm_endpoint.virtual_machine = vm
-    db.session.commit()
+    db_adapter.commit()
 
 
 def vm_config_commit(vm, dns, public_ip, private_ip):
@@ -140,9 +153,12 @@ def vm_config_commit(vm, dns, public_ip, private_ip):
     :param vm:
     :return:
     """
-    vm_config = VMConfig(vm, dns, public_ip, private_ip)
-    db.session.add(vm_config)
-    db.session.commit()
+    db_adapter.add_object_kwargs(VMConfig,
+                                 virtual_machine=vm,
+                                 dns=dns,
+                                 public_ip=public_ip,
+                                 private_ip=private_ip)
+    db_adapter.commit()
 
 
 def wait_for_async(sms, request_id, second_per_loop, loop):
@@ -201,18 +217,18 @@ def load_template(user_template, operation):
 
 
 def query_user_operation(user_template, operation):
-    return UserOperation.query.filter_by(user_template=user_template). \
+    return UserOperation.filter_by(user_template=user_template). \
         filter(UserOperation.operation.like(operation + '%')).all()
 
 
 def query_user_resource(user_template):
-    return UserResource.query.filter_by(user_template=user_template).all()
+    return db_adapter.find_all_objects(user_template_id=user_template.id)
 
 
 def operation_status(user_template, operation):
     if UserOperation.query.filter_by(user_template=user_template, status=FAIL). \
             filter(UserOperation.operation.like(operation + '%')).count() > 0:
         return FAIL
-    if UserOperation.query.filter_by(user_template=user_template, operation=operation, status=END).count() > 0:
+    if db_adapter.count(UserOperation, user_template=user_template, operation=operation, status=END) > 0:
         return END
     return START

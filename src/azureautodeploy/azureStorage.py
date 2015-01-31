@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.app.azureUtil import *
-from src.app.log import *
-from src.app.database import *
+from src.azureautodeploy.azureUtil import *
+from src.azureautodeploy.log import *
+from src.azureautodeploy.database import *
 
 
 class AzureStorage:
@@ -28,8 +28,8 @@ class AzureStorage:
         # avoid duplicate storage account
         if not self.__storage_account_exists(storage_account['service_name']):
             # delete old info in database
-            UserResource.query.filter_by(type=STORAGE_ACCOUNT, name=storage_account['service_name']).delete()
-            db.session.commit()
+            db_adapter.delete_all_objects(UserResource, type=STORAGE_ACCOUNT, name=storage_account['service_name'])
+            db_adapter.commit()
             try:
                 result = self.sms.create_storage_account(storage_account['service_name'],
                                                          storage_account['description'],
@@ -56,15 +56,13 @@ class AzureStorage:
                 user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, END)
         else:
             # check whether storage account created by this function before
-            if UserResource.query.filter_by(type=STORAGE_ACCOUNT, name=storage_account['service_name']).count() == 0:
+            if db_adapter.count(UserResource, type=STORAGE_ACCOUNT, name=storage_account['service_name']) == 0:
                 m = '%s %s exist but not created by this function before' %\
                     (STORAGE_ACCOUNT, storage_account['service_name'])
                 user_resource_commit(self.user_template, STORAGE_ACCOUNT, storage_account['service_name'], RUNNING)
-
             else:
                 m = '%s %s exist and created by this function before' %\
                     (STORAGE_ACCOUNT, storage_account['service_name'])
-
             user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, END, m)
             log.debug(m)
         return True

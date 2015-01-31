@@ -1,14 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.app import app
-from src.app.functions import *
-from flask.ext.sqlalchemy import SQLAlchemy
+from src.azureautodeploy.database import db
 from datetime import datetime
 import json
-
-app.config["SQLALCHEMY_DATABASE_URI"] = safe_get_config("mysql/connection",
-                                                        "mysql://root:root@localhost/azureautodeploy")
-db = SQLAlchemy(app)
 
 
 def to_json(inst, cls):
@@ -49,11 +43,17 @@ class UserInfo(db.Model):
         self.create_time = create_time
         self.last_login_time = last_login_time
 
+    def json(self):
+        return to_json(self, self.__class__)
+
+    def __repr__(self):
+        return "UserInfo: " + self.json()
+
 
 class UserKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    cert_url = db.Column(db.String(100))
-    pem_url = db.Column(db.String(100))
+    cert_url = db.Column(db.String(200))
+    pem_url = db.Column(db.String(200))
     subscription_id = db.Column(db.String(100))
     management_host = db.Column(db.String(100))
     create_time = db.Column(db.DateTime)
@@ -78,7 +78,7 @@ class UserKey(db.Model):
 
 class Template(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String(100))
+    url = db.Column(db.String(200))
     type = db.Column(db.String(50))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
@@ -92,6 +92,12 @@ class Template(db.Model):
         self.type = type
         self.create_time = create_time
         self.last_modify_time = last_modify_time
+
+    def json(self):
+        return to_json(self, self.__class__)
+
+    def __repr__(self):
+        return "Template: " + self.json()
 
 
 class UserTemplate(db.Model):
@@ -202,6 +208,12 @@ class VMEndpoint(db.Model):
         self.create_time = create_time
         self.last_modify_time = last_modify_time
 
+    def json(self):
+        return to_json(self, self.__class__)
+
+    def __repr__(self):
+        return "VMEndpoint: " + self.json()
+
 
 class VMConfig(db.Model):
     __tablename__ = 'vm_config'
@@ -225,3 +237,9 @@ class VMConfig(db.Model):
         self.private_ip = private_ip
         self.create_time = create_time
         self.last_modify_time = last_modify_time
+
+    def json(self):
+        return to_json(self, self.__class__)
+
+    def __repr__(self):
+        return "VMConfig: " + self.json()

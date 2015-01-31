@@ -1,11 +1,12 @@
 __author__ = 'Yifu Huang'
 
-from src.app import credentials
-from src.app.azureImpl import AzureImpl
-from src.app.azureUtil import *
-from src.app.database import *
-from src.app.log import *
+from src.azureautodeploy import credentials
+from src.azureautodeploy.azureImpl import AzureImpl
+from src.azureautodeploy.database import *
+from src.azureautodeploy.database.models import *
+from src.azureautodeploy.log import *
 import sys
+import time
 
 # this is how client execute
 
@@ -16,18 +17,18 @@ user_info = a.register(credentials.USER_NAME, credentials.USER_EMAIL,
 # after key generation, cer should be uploaded to user's azure portal
 
 # user choose template
-templates = Template.query.all()
+templates = db_adapter.find_all_objects(Template)
 # make sure public templates exist
 if templates is None:
     log.error("no public templates")
     sys.exit(1)
 for template in templates:
-    user_template = UserTemplate.query.filter_by(user_info=user_info, template=template).first()
+
+    user_template = db_adapter.find_first_object(UserTemplate, user_info=user_info, template=template)
     # avoid duplicate user template
     if user_template is None:
-        user_template = UserTemplate(user_info, template)
-        db.session.add(user_template)
-        db.session.commit()
+        db_adapter.add_object_kwargs(UserTemplate, user_info=user_info, template=template)
+        db_adapter.commit()
     else:
         log.debug('user template [%d] exist' % user_template.id)
 
@@ -35,18 +36,20 @@ for template in templates:
 connected = a.connect(user_info)
 log.debug('connect: %s' % connected)
 
-user_template = UserTemplate.query.filter_by(id=1).first()
-showdown_result = a.shutdown_sync(user_template)
-log.debug('showdown_result: %s' % showdown_result)
 
 """
+showdown_result = a.shutdown_sync(user_template)
+log.debug('showdown_result: %s' % showdown_result)
+"""
+
 # create virtual machine
+user_template = db_adapter.get_object(UserTemplate, 1)
 create_async_result = a.create_async(user_template)
 log.debug('create_async: %s' % create_async_result)
 while True:
     log.debug('greeting from main')
     time.sleep(60)
-"""
+
 """
 while operation_status(user_template, CREATE) == START:
     log.debug('operation_status loop')

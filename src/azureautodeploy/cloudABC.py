@@ -1,7 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.app.database import *
-from src.app.log import *
+from src.azureautodeploy.database import *
+from src.azureautodeploy.database.models import *
+from src.azureautodeploy.log import *
 from abc import *
 
 
@@ -25,12 +26,12 @@ class CloudABC:
         :param email:
         :return: user info
         """
-        user_info = UserInfo.query.filter_by(name=name, email=email).first()
+
+        user_info = db_adapter.find_first_object(UserInfo, name=name, email=email)
         # avoid duplicate user info
         if user_info is None:
-            user_info = UserInfo(name, email)
-            db.session.add(user_info)
-            db.session.commit()
+            user_info = db_adapter.add_object_kwargs(UserInfo, name=name, email=email)
+            db_adapter.commit()
         else:
             log.debug('user info [%d] has registered' % user_info.id)
         return user_info
