@@ -174,16 +174,16 @@ def wait_for_async(sms, request_id, second_per_loop, loop):
         log.debug('%s [%s] loop count [%d]' % (WAIT_FOR_ASYNC, request_id, count))
         count += 1
         if count > loop:
-            log.debug('Timed out waiting for async operation to complete.')
+            log.error('Timed out waiting for async operation to complete.')
             return False
         time.sleep(second_per_loop)
         result = sms.get_operation_status(request_id)
     if result.status != SUCCEEDED:
-        log.debug(vars(result))
+        log.error(vars(result))
         if result.error:
-            log.debug(result.error.code)
-            log.debug(vars(result.error))
-        log.debug('Asynchronous operation did not succeed.')
+            log.error(result.error.code)
+            log.error(vars(result.error))
+        log.error('Asynchronous operation did not succeed.')
         return False
     return True
 
@@ -201,12 +201,12 @@ def load_template(user_template, operation):
         except Exception as e:
             m = 'ugly json format: %s' % e.message
             user_operation_commit(user_template, operation, FAIL, m)
-            log.debug(e)
+            log.error(e)
             return None
     else:
         m = '%s not exist' % user_template.template.url
         user_operation_commit(user_template, operation, FAIL, m)
-        log.debug(m)
+        log.error(m)
         return None
     template_config = {
         T_EXPR_NAME: raw_template[T_EXPR_NAME],

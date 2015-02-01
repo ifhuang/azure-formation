@@ -26,7 +26,6 @@ if templates is None:
     log.error("no public templates")
     sys.exit(1)
 for template in templates:
-
     user_template = db_adapter.find_first_object(UserTemplate, user_info=user_info, template=template)
     # avoid duplicate user template
     if user_template is None:
@@ -41,21 +40,24 @@ log.debug('connect: %s' % connected)
 
 
 """
-showdown_result = a.shutdown_sync(user_template)
-log.debug('showdown_result: %s' % showdown_result)
+create_async_result = a.create_async(user_template)
+log.debug('create_async: %s' % create_async_result)
 update_template = db_adapter.get_object(UserTemplate, 2)
 update_async_result = a.update_async(user_template, update_template)
 log.debug('update_async_result: %s' % update_async_result)
+
+shutdown_async_result = a.shutdown_async(user_template)
+log.debug('shutdown_async_result: %s' % shutdown_async_result)
 """
 user_template = db_adapter.get_object(UserTemplate, 1)
-create_async_result = a.create_async(user_template)
-log.debug('create_async: %s' % create_async_result)
+delete_async_result = a.delete_async(user_template)
+log.debug('delete_async_result: %s' % delete_async_result)
 
 uo_id = 0
 ur_id = 0
 while True:
     log.debug('operation_status loop, uo_id[%d], ur_id[%d]' % (uo_id, ur_id))
-    uo = query_user_operation(user_template, CREATE, uo_id)
+    uo = query_user_operation(user_template, DELETE, uo_id)
     if len(uo) > 0:
         uo_id = uo[-1].id
         for u in uo:

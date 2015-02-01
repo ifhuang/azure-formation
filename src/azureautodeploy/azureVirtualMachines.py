@@ -38,7 +38,7 @@ class AzureVirtualMachines:
         if cs is None:
             m = '%s %s not running in database now' % (CLOUD_SERVICE, cloud_service['service_name'])
             user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINES, FAIL, m)
-            log.debug(m)
+            log.error(m)
             return False
         for virtual_machine in virtual_machines:
             user_operation_commit(self.user_template, CREATE_DEPLOYMENT, START)
@@ -111,7 +111,7 @@ class AzureVirtualMachines:
                             (VIRTUAL_MACHINE, virtual_machine['role_name'])
                         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
                         vm_endpoint_rollback(cs)
-                        log.debug(m)
+                        log.error(m)
                         return False
                     else:
                         m = '%s %s exist and created by this user template before' % \
@@ -137,14 +137,14 @@ class AzureVirtualMachines:
                     except Exception as e:
                         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, e.message)
                         vm_endpoint_rollback(cs)
-                        log.debug(e)
+                        log.error(e)
                         return False
                     # make sure async operation succeeds
                     if not wait_for_async(self.sms, result.request_id, ASYNC_TICK, ASYNC_LOOP):
                         m = WAIT_FOR_ASYNC + ' ' + FAIL
                         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
                         vm_endpoint_rollback(cs)
-                        log.debug(m)
+                        log.error(m)
                         return False
                     # make sure role is ready
                     if not self.wait_for_role(cloud_service['service_name'],
@@ -155,7 +155,7 @@ class AzureVirtualMachines:
                         m = '%s %s created but not ready' % (VIRTUAL_MACHINE, virtual_machine['role_name'])
                         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
                         vm_endpoint_rollback(cs)
-                        log.debug(m)
+                        log.error(m)
                         return False
                     else:
                         user_resource_commit(self.user_template,
@@ -194,7 +194,7 @@ class AzureVirtualMachines:
                     user_operation_commit(self.user_template, CREATE_DEPLOYMENT, FAIL, e.message)
                     user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, e.message)
                     vm_endpoint_rollback(cs)
-                    log.debug(e)
+                    log.error(e)
                     return False
                 # make sure async operation succeeds
                 if not wait_for_async(self.sms, result.request_id, ASYNC_TICK, ASYNC_LOOP):
@@ -202,7 +202,7 @@ class AzureVirtualMachines:
                     user_operation_commit(self.user_template, CREATE_DEPLOYMENT, FAIL, m)
                     user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
                     vm_endpoint_rollback(cs)
-                    log.debug(m)
+                    log.error(m)
                     return False
                 # make sure deployment is ready
                 if not self.__wait_for_deployment(cloud_service['service_name'],
@@ -212,7 +212,7 @@ class AzureVirtualMachines:
                     m = '%s %s created but not ready' % (DEPLOYMENT, deployment['deployment_name'])
                     user_operation_commit(self.user_template, CREATE_DEPLOYMENT, FAIL, m)
                     vm_endpoint_rollback(cs)
-                    log.debug(m)
+                    log.error(m)
                     return False
                 else:
                     user_resource_commit(self.user_template, DEPLOYMENT, deployment['deployment_name'], RUNNING, cs.id)
@@ -226,7 +226,7 @@ class AzureVirtualMachines:
                     m = '%s %s created but not ready' % (VIRTUAL_MACHINE, virtual_machine['role_name'])
                     user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
                     vm_endpoint_rollback(cs)
-                    log.debug(m)
+                    log.error(m)
                     return False
                 else:
                     user_resource_commit(self.user_template,
@@ -253,7 +253,7 @@ class AzureVirtualMachines:
             props = self.sms.get_deployment_by_name(service_name, deployment_name)
         except Exception as e:
             if e.message != 'Not found (Not Found)':
-                log.debug('%s %s: %s' % (DEPLOYMENT, deployment_name, e))
+                log.error('%s %s: %s' % (DEPLOYMENT, deployment_name, e))
             return False
         return props is not None
 
@@ -269,7 +269,7 @@ class AzureVirtualMachines:
             props = self.sms.get_role(service_name, deployment_name, role_name)
         except Exception as e:
             if e.message != 'Not found (Not Found)':
-                log.debug('%s %s: %s' % (VIRTUAL_MACHINE, role_name, e))
+                log.error('%s %s: %s' % (VIRTUAL_MACHINE, role_name, e))
             return False
         return props is not None
 
@@ -291,7 +291,7 @@ class AzureVirtualMachines:
             log.debug('_wait_for_role [%s] loop count: %d' % (role_instance_name, count))
             count += 1
             if count > loop:
-                log.debug('Timed out waiting for role instance status.')
+                log.error('Timed out waiting for role instance status.')
                 return False
             time.sleep(second_per_loop)
             props = self.sms.get_deployment_by_name(service_name, deployment_name)
@@ -315,7 +315,7 @@ class AzureVirtualMachines:
             log.debug('_wait_for_deployment [%s] loop count: %d' % (deployment_name, count))
             count += 1
             if count > loop:
-                log.debug('Timed out waiting for deployment status.')
+                log.error('Timed out waiting for deployment status.')
                 return False
             time.sleep(second_per_loop)
             props = self.sms.get_deployment_by_name(service_name, deployment_name)
