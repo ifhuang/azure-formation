@@ -188,7 +188,7 @@ class AzureImpl(CloudABC):
                                               type=VIRTUAL_MACHINE,
                                               name=update_virtual_machine['role_name'],
                                               cloud_service_id=cs.id)
-            old_endpoints = db_adapter.find_all_objects(VMEndpoint, virtual_machine=vm)
+            old_endpoints = db_adapter.find_all_objects(VMEndpoint, virtual_machine_id=vm.id)
             new_endpoints = []
             for input_endpoint in input_endpoints:
                 endpoint = VMEndpoint(input_endpoint['name'],
@@ -309,7 +309,8 @@ class AzureImpl(CloudABC):
                     return False
                 else:
                     # delete deployment
-                    db_adapter.delete_all_objects(user_template=user_template,
+                    db_adapter.delete_all_objects(UserResource,
+                                                  user_template_id=user_template.id,
                                                   type=DEPLOYMENT,
                                                   name=deployment['deployment_name'],
                                                   cloud_service_id=cs.id)
@@ -327,7 +328,7 @@ class AzureImpl(CloudABC):
                 else:
                     # delete vm, cascade delete vm endpoint and vm config
                     db_adapter.delete_all_objects(UserResource,
-                                                  user_template=user_template,
+                                                  user_template_id=user_template.id,
                                                   type=VIRTUAL_MACHINE,
                                                   name=virtual_machine['role_name'],
                                                   cloud_service_id=cs.id)
@@ -361,7 +362,7 @@ class AzureImpl(CloudABC):
                 else:
                     # delete vm, cascade delete vm endpoint and vm config
                     db_adapter.delete_all_objects(UserResource,
-                                                  user_template=user_template,
+                                                  user_template_id=user_template.id,
                                                   type=VIRTUAL_MACHINE,
                                                   name=virtual_machine['role_name'],
                                                   cloud_service_id=cs.id)
@@ -473,7 +474,7 @@ class AzureImpl(CloudABC):
                 return None
             # make sure virtual machine of user template exist in database
             if db_adapter.count(UserResource,
-                                user_template=self.user_template,
+                                user_template_id=self.user_template.id,
                                 type=VIRTUAL_MACHINE,
                                 name=virtual_machine['role_name'],
                                 cloud_service_id=cs.id) == 0:

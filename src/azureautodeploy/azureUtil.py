@@ -7,19 +7,20 @@ import time
 import os
 import json
 
-# resource name
+# resource name in table UserResource
 STORAGE_ACCOUNT = 'storage account'
 CLOUD_SERVICE = 'cloud service'
 VIRTUAL_MACHINES = 'virtual machines'
 DEPLOYMENT = 'deployment'
 VIRTUAL_MACHINE = 'virtual machine'
-# resource status
+# resource status in table UserResource
 RUNNING = 'Running'
 STOPPED = 'Stopped'
+# resource status in program
 READY_ROLE = 'ReadyRole'
 STOPPED_VM = 'StoppedVM'
 STOPPED_DEALLOCATED = 'StoppedDeallocated'
-# operation name
+# operation name in table UserOperation
 CREATE = 'create'
 CREATE_STORAGE_ACCOUNT = CREATE + ' ' + STORAGE_ACCOUNT
 CREATE_CLOUD_SERVICE = CREATE + ' ' + CLOUD_SERVICE
@@ -33,7 +34,7 @@ DELETE_DEPLOYMENT = DELETE + ' ' + DEPLOYMENT
 DELETE_VIRTUAL_MACHINE = DELETE + ' ' + VIRTUAL_MACHINE
 SHUTDOWN = 'shutdown'
 SHUTDOWN_VIRTUAL_MACHINE = SHUTDOWN + ' ' + VIRTUAL_MACHINE
-# operation status
+# operation status in table UserOperation
 START = 'start'
 FAIL = 'fail'
 END = 'end'
@@ -141,7 +142,7 @@ def vm_endpoint_update(cs, vm):
     :param vm:
     :return:
     """
-    vm_endpoints = db_adapter.find_all_objects(VMEndpoint, cloud_service_id=cs.id, virtual_machine_id=None)
+    vm_endpoints = db_adapter.filter_by(VMEndpoint, cloud_service=cs, virtual_machine=None).all()
     for vm_endpoint in vm_endpoints:
         vm_endpoint.virtual_machine = vm
     db_adapter.commit()
@@ -207,28 +208,25 @@ def load_template(user_template, operation):
         user_operation_commit(user_template, operation, FAIL, m)
         log.debug(m)
         return None
-    template_config = {T_EXPR_NAME: raw_template[T_EXPR_NAME],
-                       T_STORAGE_ACCOUNT: raw_template[T_STORAGE_ACCOUNT],
-                       T_CONTAINER: raw_template[T_CONTAINER],
-                       T_CLOUD_SERVICE: raw_template[T_CLOUD_SERVICE],
-                       T_DEPLOYMENT: raw_template[T_DEPLOYMENT],
-                       T_VIRTUAL_MACHINES: raw_template[R_VIRTUAL_ENVIRONMENTS]}
+    template_config = {
+        T_EXPR_NAME: raw_template[T_EXPR_NAME],
+        T_STORAGE_ACCOUNT: raw_template[T_STORAGE_ACCOUNT],
+        T_CONTAINER: raw_template[T_CONTAINER],
+        T_CLOUD_SERVICE: raw_template[T_CLOUD_SERVICE],
+        T_DEPLOYMENT: raw_template[T_DEPLOYMENT],
+        T_VIRTUAL_MACHINES: raw_template[R_VIRTUAL_ENVIRONMENTS]
+    }
     return template_config
 
 
-def query_user_operation(user_template, operation):
-    return UserOperation.filter_by(user_template=user_template). \
-        filter(UserOperation.operation.like(operation + '%')).all()
+def query_user_operation(user_template, operation, id):
+    return db_adapter.filter(UserOperation,
+                             UserOperation.user_template == user_template,
+                             UserOperation.operation.like(operation + '%'),
+                             UserOperation.id > id).all()
 
 
-def query_user_resource(user_template):
-    return db_adapter.find_all_objects(user_template_id=user_template.id)
-
-
-def operation_status(user_template, operation):
-    if UserOperation.query.filter_by(user_template=user_template, status=FAIL). \
-            filter(UserOperation.operation.like(operation + '%')).count() > 0:
-        return FAIL
-    if db_adapter.count(UserOperation, user_template=user_template, operation=operation, status=END) > 0:
-        return END
-    return START
+def query_user_resource(user_template, id):
+    return db_adapter.filter(UserResource,
+                             UserResource.user_template == user_template,
+                             UserResource.id > id).all()

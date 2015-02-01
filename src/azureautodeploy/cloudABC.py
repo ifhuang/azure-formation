@@ -26,7 +26,6 @@ class CloudABC:
         :param email:
         :return: user info
         """
-
         user_info = db_adapter.find_first_object(UserInfo, name=name, email=email)
         # avoid duplicate user info
         if user_info is None:

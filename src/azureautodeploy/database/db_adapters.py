@@ -4,6 +4,7 @@ class DBAdapter(object):
 
 
 class SQLAlchemyAdapter(DBAdapter):
+
     def __init__(self, db):
         super(SQLAlchemyAdapter, self).__init__(db)
 
@@ -25,6 +26,8 @@ class SQLAlchemyAdapter(DBAdapter):
                     "SQLAlchemyAdapter.find_first_object(): Class '%s' has no field '%s'." % (ObjectClass, field_name))
 
             # Add a filter to the query
+            # _in do not support relationship query now, use foreign key instead
+            # _in do not support None
             query = query.filter(field.in_((field_value,)))
 
         # Execute query
@@ -72,9 +75,9 @@ class SQLAlchemyAdapter(DBAdapter):
         query = ObjectClass.query
         return query.filter(*criterion)
     
-    def filter_by(self, ObjectClass, *criterion):
+    def filter_by(self, ObjectClass, **kwargs):
         query = ObjectClass.query
-        return query.filter_by(*criterion)
+        return query.filter_by(**kwargs)
 
     def find_first_object(self, ObjectClass, **kwargs):
         """ Retrieve the first object matching the case sensitive filters in 'kwargs'. """
@@ -152,6 +155,7 @@ class SQLAlchemyAdapter(DBAdapter):
             query = query.filter(field.in_((field_value,)))
 
         # Execute delete
+        # query filter by in_ do not support none args, use synchronize_session=False instead
         query.delete(synchronize_session=False)
 
     def commit(self):

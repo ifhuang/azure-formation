@@ -74,8 +74,11 @@ class AzureVirtualMachines:
                 # avoid duplicate vm endpoint under same cloud service
                 while db_adapter.count(VMEndpoint, cloud_service_id=cs.id, public_port=port) > 0:
                     port = (port + 1) % 65536
-                vm_endpoint_commit(input_endpoint['name'], input_endpoint['protocol'],
-                                   port, input_endpoint['local_port'], cs)
+                vm_endpoint_commit(input_endpoint['name'],
+                                   input_endpoint['protocol'],
+                                   port,
+                                   input_endpoint['local_port'],
+                                   cs)
                 network.input_endpoints.input_endpoints.append(
                     ConfigurationSetInputEndpoint(input_endpoint['name'],
                                                   input_endpoint['protocol'],
@@ -161,7 +164,9 @@ class AzureVirtualMachines:
                                              RUNNING,
                                              cs.id)
                         user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, END)
-                        self.__vm_info_helper(cs, cloud_service['service_name'], deployment['deployment_name'],
+                        self.__vm_info_helper(cs,
+                                              cloud_service['service_name'],
+                                              deployment['deployment_name'],
                                               virtual_machine['role_name'])
             else:
                 # delete old deployment
@@ -174,7 +179,7 @@ class AzureVirtualMachines:
                                               type=VIRTUAL_MACHINE,
                                               name=virtual_machine['role_name'],
                                               cloud_service_id=cs.id)
-                db.session.commit()
+                db_adapter.commit()
                 try:
                     result = self.sms.create_virtual_machine_deployment(cloud_service['service_name'],
                                                                         deployment['deployment_name'],
