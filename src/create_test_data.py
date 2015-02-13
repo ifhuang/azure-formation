@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.azureautodeploy.database import *
-from src.azureautodeploy.database.models import *
-from src.azureautodeploy.log import *
+from src.azureformation.database import *
+from src.azureformation.database.models import *
+from src.azureformation.log import *
 import os
 import sys
 

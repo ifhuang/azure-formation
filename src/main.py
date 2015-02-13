@@ -1,11 +1,11 @@
 __author__ = 'Yifu Huang'
 
-from src.azureautodeploy import credentials
-from src.azureautodeploy.azureImpl import AzureImpl
-from src.azureautodeploy.azureUtil import *
-from src.azureautodeploy.database import *
-from src.azureautodeploy.database.models import *
-from src.azureautodeploy.log import *
+from src.azureformation import credentials
+from src.azureformation.azureImpl import AzureImpl
+from src.azureformation.azureUtil import *
+from src.azureformation.database import *
+from src.azureformation.database.models import *
+from src.azureformation.log import *
 import sys
 import time
 

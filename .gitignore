@@ -2,5 +2,4 @@
 *.cer
 *.pem
 *.pyc
-src/azureautodeploy/credentials.py
-
+*credentials.py

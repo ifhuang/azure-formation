@@ -1,9 +1,9 @@
 __author__ = 'Yifu Huang'
 
 from azure.servicemanagement import *
-from src.azureautodeploy import credentials
-from src.azureautodeploy.database import *
-from src.azureautodeploy.database.models import *
+from src.azureformation import credentials
+from src.azureformation.database import *
+from src.azureformation.database.models import *
 
 
 def image_name():
@@ -50,4 +50,10 @@ def like():
     print ui
 
 
-vm_endpoint_update()
+def json_test():
+    ret = {}
+    ret['user_operation'] = None
+    a = json.dumps(ret)
+    return a
+
+json_test()

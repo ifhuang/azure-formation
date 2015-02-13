@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.azureautodeploy.azureUtil import *
-from src.azureautodeploy.database import *
-from src.azureautodeploy.database.models import *
+from src.azureformation.azureUtil import *
+from src.azureformation.database import *
+from src.azureformation.database.models import *
 from azure.servicemanagement import *
 import datetime
 

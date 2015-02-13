@@ -1,6 +1,6 @@
 __author__ = 'Yifu Huang'
 
-from src.azureautodeploy.database import db
+from src.azureformation.database import db
 from datetime import datetime
 import json
 
