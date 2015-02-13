@@ -4,6 +4,8 @@ from azure.servicemanagement import *
 from src.azureformation import credentials
 from src.azureformation.database import *
 from src.azureformation.database.models import *
+import subprocess
+import time
 
 
 def image_name():
@@ -50,10 +52,17 @@ def like():
     print ui
 
 
-def json_test():
-    ret = {}
-    ret['user_operation'] = None
-    a = json.dumps(ret)
-    return a
+def test_async():
+    command = ['python', 'iTestAsync.py']
+    subprocess.Popen(command)
+    print hex(id(db))
+    while True:
+        uos = db_adapter.find_all_objects(UserOperation)
+        for uo in uos:
+            print uo
+        db_adapter.add_object_kwargs(UserOperation, user_template=None, operation='create', status='end')
+        db_adapter.commit()
+        time.sleep(4)
 
-json_test()
+
+test_async()

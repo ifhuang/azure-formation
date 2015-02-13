@@ -2,13 +2,13 @@
     "expr_name": "azure vm test 1",
     "description" : "one storage account, one container, one cloud service, one deployment, multiple virtual machines (Windows/Linux), multiple input endpoints",
     "storage_account" : {
-        "service_name" : "yifu0storage",
+        "service_name" : "opentech0storage",
         "description" : "yifu-test-description",
         "label" : "yifu-test-label",
         "location" : "China East",
         "url_base" : "blob.core.chinacloudapi.cn"
     },
-    "container" : "yifu0container",
+    "container" : "open-tech-container",
     "cloud_service" : {
         "service_name" : "yifu-test-service-name",
         "label" : "yifu-test-label",
