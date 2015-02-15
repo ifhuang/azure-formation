@@ -1,6 +1,12 @@
 __author__ = 'Yifu Huang'
 
 
+STORAGE_ACCOUNT = 'storage account'
+CLOUD_SERVICE = 'cloud service'
+DEPLOYMENT = 'deployment'
+VIRTUAL_MACHINE = 'virtual machine'
+
+
 class AKOwner:
     """
     For owner in db model AzureKey
@@ -53,17 +59,17 @@ class ALOperation:
     For operation in db model AzureLog
     """
     CREATE = 'create'
-    CREATE_STORAGE_ACCOUNT = CREATE + ' ' + ARType.STORAGE_ACCOUNT
-    CREATE_CLOUD_SERVICE = CREATE + ' ' + ARType.CLOUD_SERVICE
-    CREATE_DEPLOYMENT = CREATE + ' ' + ARType.DEPLOYMENT
-    CREATE_VIRTUAL_MACHINE = CREATE + ' ' + ARType.VIRTUAL_MACHINE
+    CREATE_STORAGE_ACCOUNT = CREATE + ' ' + STORAGE_ACCOUNT
+    CREATE_CLOUD_SERVICE = CREATE + ' ' + CLOUD_SERVICE
+    CREATE_DEPLOYMENT = CREATE + ' ' + DEPLOYMENT
+    CREATE_VIRTUAL_MACHINE = CREATE + ' ' + VIRTUAL_MACHINE
     UPDATE = 'update'
-    UPDATE_VIRTUAL_MACHINE = UPDATE + ' ' + ARType.VIRTUAL_MACHINE
+    UPDATE_VIRTUAL_MACHINE = UPDATE + ' ' + VIRTUAL_MACHINE
     DELETE = 'delete'
-    DELETE_DEPLOYMENT = DELETE + ' ' + ARType.DEPLOYMENT
-    DELETE_VIRTUAL_MACHINE = DELETE + ' ' + ARType.VIRTUAL_MACHINE
+    DELETE_DEPLOYMENT = DELETE + ' ' + DEPLOYMENT
+    DELETE_VIRTUAL_MACHINE = DELETE + ' ' + VIRTUAL_MACHINE
     SHUTDOWN = 'shutdown'
-    SHUTDOWN_VIRTUAL_MACHINE = SHUTDOWN + ' ' + ARType.VIRTUAL_MACHINE
+    SHUTDOWN_VIRTUAL_MACHINE = SHUTDOWN + ' ' + VIRTUAL_MACHINE
 
 
 class ALStatus:
@@ -75,19 +81,30 @@ class ALStatus:
     END = 'end'
 
 
-class ARType:
+class ASAStatus:
     """
-    For type in db model AzureResource
+    For status in db model AzureStorageAccount
     """
-    STORAGE_ACCOUNT = 'storage account'
-    CLOUD_SERVICE = 'cloud service'
-    DEPLOYMENT = 'deployment'
-    VIRTUAL_MACHINE = 'virtual machine'
+    ONLINE = 'Online'
 
 
-class ARStatus:
+class ACSStatus:
     """
-    For status in db model AzureResource and AzureVM
+    For status in db model AzureCloudService
+    """
+    CREATED = 'Created'
+
+
+class ADStatus:
+    """
+    For status in db model AzureDeployment
+    """
+    RUNNING = 'Running'
+
+
+class AVMStatus:
+    """
+    For status in db model AzureVirtualMachine
     """
     RUNNING = 'Running'
     STOPPED = 'Stopped'

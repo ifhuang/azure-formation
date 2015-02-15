@@ -32,6 +32,7 @@ class DBBase(db.Model):
     """
     DB model base class, providing basic functions
     """
+    __abstract__ = True
 
     def __init__(self, **kwargs):
         super(DBBase, self).__init__(**kwargs)
@@ -61,8 +62,7 @@ class Hackathon(DBBase):
 
 class AzureKey(DBBase):
     """
-    Azure certificates information of user/hackathon
-    Note that each user/hackathon may has multiple AzureKey
+    Azure certificate information of user/hackathon
     """
     id = db.Column(db.Integer, primary_key=True)
     # cert file should be uploaded to azure portal
@@ -135,7 +135,7 @@ class VirtualEnvironment(DBBase):
     # VEProvider in enum.py
     provider = db.Column(db.Integer)
     name = db.Column(db.String(100))
-    image = db.Column(db.String(100))
+    image = db.Column(db.String(200))
     # VEStatus in enum.py
     status = db.Column(db.Integer)
     # VERemoteProvider in enum.py
@@ -171,74 +171,119 @@ class AzureLog(DBBase):
             self.exec_time = datetime.utcnow()
 
 
-class AzureResource(DBBase):
+class AzureStorageAccount(DBBase):
     """
-    Azure resource, including storage account, cloud service, deployment and virtual machine
+    Azure storage account information
     """
     id = db.Column(db.Integer, primary_key=True)
-    # ARType in enum.py
-    type = db.Column(db.String(50))
     name = db.Column(db.String(50))
-    # ARStatus in enum.py
+    description = db.Column(db.String(100))
+    location = db.Column(db.String(50))
+    # ASAStatus in enum.py
     status = db.Column(db.String(50))
-    # for deployment and virtual machine
-    cloud_service_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
     experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
-    experiment = db.relationship('Experiment', backref=db.backref('azure_resource', lazy='dynamic'))
+    experiment = db.relationship('Experiment', backref=db.backref('azure_storage_account', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
     def __init__(self, **kwargs):
-        super(AzureResource, self).__init__(**kwargs)
+        super(AzureStorageAccount, self).__init__(**kwargs)
         if self.create_time is None:
             self.create_time = datetime.utcnow()
         if self.last_modify_time is None:
             self.last_modify_time = datetime.utcnow()
 
 
-class AzureVM(DBBase):
+class AzureCloudService(DBBase):
     """
-    AzureVM is dedicated for virtual machine
+    Azure cloud service information
     """
-    __tablename__ = 'azure_vm'
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50))
+    label = db.Column(db.String(50))
+    location = db.Column(db.String(50))
+    # ACSStatus in enum.py
+    status = db.Column(db.String(50))
+    experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
+    experiment = db.relationship('Experiment', backref=db.backref('azure_cloud_service', lazy='dynamic'))
+    create_time = db.Column(db.DateTime)
+    last_modify_time = db.Column(db.DateTime)
+
+    def __init__(self, **kwargs):
+        super(AzureCloudService, self).__init__(**kwargs)
+        if self.create_time is None:
+            self.create_time = datetime.utcnow()
+        if self.last_modify_time is None:
+            self.last_modify_time = datetime.utcnow()
+
+
+class AzureDeployment(DBBase):
+    """
+    Azure deployment information
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50))
+    slot = db.Column(db.String(50))
+    # ADStatus in enum.py
+    status = db.Column(db.String(50))
+    cloud_service_id = db.Column(db.Integer, db.ForeignKey('azure_cloud_service.id', ondelete='CASCADE'))
+    cloud_service = db.relationship('AzureCloudService', backref=db.backref('azure_deployment_c', lazy='dynamic'))
+    experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
+    experiment = db.relationship('Experiment', backref=db.backref('azure_deployment_e', lazy='dynamic'))
+    create_time = db.Column(db.DateTime)
+    last_modify_time = db.Column(db.DateTime)
+
+    def __init__(self, **kwargs):
+        super(AzureDeployment, self).__init__(**kwargs)
+        if self.create_time is None:
+            self.create_time = datetime.utcnow()
+        if self.last_modify_time is None:
+            self.last_modify_time = datetime.utcnow()
+
+
+class AzureVirtualMachine(DBBase):
+    """
+    Azure virtual machine information
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50))
+    label = db.Column(db.String(50))
+    # AVMStatus in enum.py
+    status = db.Column(db.String(50))
     dns = db.Column(db.String(50))
     public_ip = db.Column(db.String(50))
     private_ip = db.Column(db.String(50))
-    cloud_service_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
-    cloud_service = db.relationship('AzureResource', foreign_keys=[cloud_service_id],
-                                    backref=db.backref('azure_vm_c', lazy='dynamic'))
-    deployment_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
-    deployment = db.relationship('AzureResource', foreign_keys=[deployment_id],
-                                 backref=db.backref('azure_vm_d', lazy='dynamic'))
-    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
-    virtual_machine = db.relationship('AzureResource', foreign_keys=[virtual_machine_id],
-                                      backref=db.backref('azure_vm_vm', lazy='dynamic'))
+    deployment_id = db.Column(db.Integer, db.ForeignKey('azure_deployment.id', ondelete='CASCADE'))
+    deployment = db.relationship('AzureDeployment', backref=db.backref('azure_virtual_machine_d', lazy='dynamic'))
+    experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
+    experiment = db.relationship('Experiment', backref=db.backref('azure_virtual_machine_e', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
     def __init__(self, **kwargs):
-        super(AzureVM, self).__init__(**kwargs)
+        super(AzureVirtualMachine, self).__init__(**kwargs)
         if self.create_time is None:
             self.create_time = datetime.utcnow()
         if self.last_modify_time is None:
             self.last_modify_time = datetime.utcnow()
 
 
-class AzurePort(DBBase):
+class AzureEndPoint(DBBase):
     """
-    AzurePort is input endpoint relationship of azure cloud service
+    Input endpoint information of Azure virtual machine
     """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
     protocol = db.Column(db.String(50))
     public_port = db.Column(db.Integer)
     private_port = db.Column(db.Integer)
+    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('azure_virtual_machine.id', ondelete='CASCADE'))
+    virtual_machine = db.relationship('AzureEndPoint', backref=db.backref('azure_end_point', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
     def __init__(self, **kwargs):
-        super(AzurePort, self).__init__(**kwargs)
+        super(AzureEndPoint, self).__init__(**kwargs)
         if self.create_time is None:
             self.create_time = datetime.utcnow()
         if self.last_modify_time is None:
