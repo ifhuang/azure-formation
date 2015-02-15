@@ -28,57 +28,57 @@ def to_json(inst, cls):
     return json.dumps(d)
 
 
-class User(db.Model):
+class DBBase(db.Model):
+    """
+    DB model base class, providing basic functions
+    """
+
+    def __init__(self, **kwargs):
+        super(DBBase, self).__init__(**kwargs)
+
+    def json(self):
+        return to_json(self, self.__class__)
+
+    def __repr__(self):
+        return '%s: %s' % (self.__class__.__name__, self.json())
+
+
+class User(DBBase):
     """
     Just a placeholder of user
     """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
 
-    def __init__(self, name):
-        self.name = name
 
-    def json(self):
-        return to_json(self, self.__class__)
-
-    def __repr__(self):
-        return '%s: %s' % (User.__name__, self.json())
-
-
-class Hackathon(db.Model):
+class Hackathon(DBBase):
     """
     Just a placeholder of hackathon
     """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
 
-    def __init__(self, name):
-        self.name = name
 
-    def json(self):
-        return to_json(self, self.__class__)
-
-    def __repr__(self):
-        return '%s: %s' % (Hackathon.__name__, self.json())
-
-
-class AzureKey(db.Model):
+class AzureKey(DBBase):
     """
-    Azure certificates info of User or Hackathon
+    Azure certificates information of user/hackathon
+    Note that each user/hackathon may has multiple AzureKey
     """
     id = db.Column(db.Integer, primary_key=True)
+    # cert file should be uploaded to azure portal
     cert_url = db.Column(db.String(200))
+    # pem file should be saved in where this program run
     pem_url = db.Column(db.String(200))
     subscription_id = db.Column(db.String(100))
     management_host = db.Column(db.String(100))
     # AKOwner in enum.py
     owner = db.Column(db.Integer)
-    # None if owner is Hackathon
+    # None if owner is hackathon
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'))
-    user = db.relationship('User', backref=db.backref('azure_key1', lazy='dynamic'))
-    # None if owner is User
+    user = db.relationship('User', backref=db.backref('azure_key_u', lazy='dynamic'))
+    # None if owner is user
     hackathon_id = db.Column(db.Integer, db.ForeignKey('hackathon.id', ondelete='CASCADE'))
-    hackathon = db.relationship('Hackathon', backref=db.backref('azure_key2', lazy='dynamic'))
+    hackathon = db.relationship('Hackathon', backref=db.backref('azure_key_h', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
@@ -89,46 +89,33 @@ class AzureKey(db.Model):
         if self.last_modify_time is None:
             self.last_modify_time = datetime.utcnow()
 
-    def json(self):
-        return to_json(self, self.__class__)
 
-    def __repr__(self):
-        return '%s: %s' % (AzureKey.__name__, self.json())
-
-
-class Template(db.Model):
+class Template(DBBase):
     """
     Just a placeholder of template
     """
     id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(200))
 
-    def __init__(self, url):
-        self.url = url
 
-    def json(self):
-        return to_json(self, self.__class__)
-
-    def __repr__(self):
-        return '%s: %s' % (Template.__name__, self.json())
-
-
-class Experiment(db.Model):
+class Experiment(DBBase):
     """
     Experiment is launched once template is used:
-    1. user use template directly
-    2. user use template via hackathon
+    1. user use template directly (user manage his own azure resources through template)
+    2. hackathon use template directly (hackathon manage its own azure resources through template)
+    3. user use template via hackathon (online)
     """
     id = db.Column(db.Integer, primary_key=True)
-    # ExperimentStatus in enum.py
+    # EStatus in enum.py
     status = db.Column(db.Integer)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'))
-    user = db.relationship('User', backref=db.backref('experiment1', lazy='dynamic'))
     template_id = db.Column(db.Integer, db.ForeignKey('template.id', ondelete='CASCADE'))
-    template = db.relationship('Template', backref=db.backref('experiment2', lazy='dynamic'))
+    template = db.relationship('Template', backref=db.backref('experiment_t', lazy='dynamic'))
+    # None if hackathon use template directly
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'))
+    user = db.relationship('User', backref=db.backref('experiment_u', lazy='dynamic'))
     # None if user use template directly
     hackathon_id = db.Column(db.Integer, db.ForeignKey('hackathon.id', ondelete='CASCADE'))
-    hackathon = db.relationship('Hackathon', backref=db.backref('experiment3', lazy='dynamic'))
+    hackathon = db.relationship('Hackathon', backref=db.backref('experiment_h', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_heart_beat_time = db.Column(db.DateTime)
 
@@ -139,16 +126,10 @@ class Experiment(db.Model):
         if self.last_heart_beat_time is None:
             self.last_heart_beat_time = datetime.utcnow()
 
-    def json(self):
-        return to_json(self, self.__class__)
 
-    def __repr__(self):
-        return '%s: %s' % (Experiment.__name__, self.json())
-
-
-class VirtualEnvironment(db.Model):
+class VirtualEnvironment(DBBase):
     """
-    Virtual environment is abstraction of smallest unit in template
+    Virtual environment is abstraction of smallest environment unit in template
     """
     id = db.Column(db.Integer, primary_key=True)
     # VEProvider in enum.py
@@ -169,19 +150,15 @@ class VirtualEnvironment(db.Model):
         if self.create_time is None:
             self.create_time = datetime.utcnow()
 
-    def json(self):
-        return to_json(self, self.__class__)
 
-    def __repr__(self):
-        return '%s: %s' % (VirtualEnvironment.__name__, self.json())
-
-
-class AzureLog(db.Model):
+class AzureLog(DBBase):
     """
-    Azure log for every experiment
+    Azure operation log for every experiment
     """
     id = db.Column(db.Integer, primary_key=True)
+    # ALOperation in enum.py
     operation = db.Column(db.String(50))
+    # ALStatus in enum.py
     status = db.Column(db.String(50))
     note = db.Column(db.String(500))
     experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
@@ -193,25 +170,21 @@ class AzureLog(db.Model):
         if self.exec_time is None:
             self.exec_time = datetime.utcnow()
 
-    def json(self):
-        return to_json(self, self.__class__)
 
-    def __repr__(self):
-        return '%s: %s' % (AzureLog.__name__, self.json())
-
-
-class AzureResource(db.Model):
+class AzureResource(DBBase):
     """
-    For storage account, cloud service and deployment
+    Azure resource, including storage account, cloud service, deployment and virtual machine
     """
     id = db.Column(db.Integer, primary_key=True)
+    # ARType in enum.py
     type = db.Column(db.String(50))
     name = db.Column(db.String(50))
+    # ARStatus in enum.py
     status = db.Column(db.String(50))
+    # for deployment and virtual machine
+    cloud_service_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
     experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
     experiment = db.relationship('Experiment', backref=db.backref('azure_resource', lazy='dynamic'))
-    # for deployment
-    cloud_service_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
@@ -222,28 +195,25 @@ class AzureResource(db.Model):
         if self.last_modify_time is None:
             self.last_modify_time = datetime.utcnow()
 
-    def json(self):
-        return to_json(self, self.__class__)
 
-    def __repr__(self):
-        return '%s: %s' % (AzureResource.__name__, self.json())
-
-
-class AzureVM(db.Model):
+class AzureVM(DBBase):
     """
-    For virtual machine
+    AzureVM is dedicated for virtual machine
     """
     __tablename__ = 'azure_vm'
     id = db.Column(db.Integer, primary_key=True)
-    cloud_service_name = db.Column(db.String(50))
-    deployment_name = db.Column(db.String(50))
-    vm_name = db.Column(db.String(50))
-    status = db.Column(db.String(50))
     dns = db.Column(db.String(50))
     public_ip = db.Column(db.String(50))
     private_ip = db.Column(db.String(50))
-    virtual_environment_id = db.Column(db.Integer, db.ForeignKey('virtual_environment.id', ondelete='CASCADE'))
-    virtual_environment = db.relationship(VirtualEnvironment, backref=db.backref('azure_vm', lazy='dynamic'))
+    cloud_service_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
+    cloud_service = db.relationship('AzureResource', foreign_keys=[cloud_service_id],
+                                    backref=db.backref('azure_vm_c', lazy='dynamic'))
+    deployment_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
+    deployment = db.relationship('AzureResource', foreign_keys=[deployment_id],
+                                 backref=db.backref('azure_vm_d', lazy='dynamic'))
+    virtual_machine_id = db.Column(db.Integer, db.ForeignKey('azure_resource.id', ondelete='CASCADE'))
+    virtual_machine = db.relationship('AzureResource', foreign_keys=[virtual_machine_id],
+                                      backref=db.backref('azure_vm_vm', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
@@ -254,24 +224,16 @@ class AzureVM(db.Model):
         if self.last_modify_time is None:
             self.last_modify_time = datetime.utcnow()
 
-    def json(self):
-        return to_json(self, self.__class__)
 
-    def __repr__(self):
-        return '%s: %s' % (AzureVM.__name__, self.json())
-
-
-class AzurePort(db.Model):
+class AzurePort(DBBase):
     """
-    For input endpoint
+    AzurePort is input endpoint relationship of azure cloud service
     """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
     protocol = db.Column(db.String(50))
     public_port = db.Column(db.Integer)
     private_port = db.Column(db.Integer)
-    virtual_environment_id = db.Column(db.Integer, db.ForeignKey('virtual_environment.id', ondelete='CASCADE'))
-    virtual_environment = db.relationship(VirtualEnvironment, backref=db.backref('azure_vm', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
@@ -281,9 +243,3 @@ class AzurePort(db.Model):
             self.create_time = datetime.utcnow()
         if self.last_modify_time is None:
             self.last_modify_time = datetime.utcnow()
-
-    def json(self):
-        return to_json(self, self.__class__)
-
-    def __repr__(self):
-        return '%s: %s' % (AzurePort.__name__, self.json())

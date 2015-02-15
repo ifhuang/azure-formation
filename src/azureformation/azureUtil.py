@@ -7,37 +7,10 @@ import time
 import os
 import json
 
-# resource name in table UserResource
-STORAGE_ACCOUNT = 'storage account'
-CLOUD_SERVICE = 'cloud service'
-VIRTUAL_MACHINES = 'virtual machines'
-DEPLOYMENT = 'deployment'
-VIRTUAL_MACHINE = 'virtual machine'
-# resource status in table UserResource
-RUNNING = 'Running'
-STOPPED = 'Stopped'
 # resource status in program
 READY_ROLE = 'ReadyRole'
 STOPPED_VM = 'StoppedVM'
 STOPPED_DEALLOCATED = 'StoppedDeallocated'
-# operation name in table UserOperation
-CREATE = 'create'
-CREATE_STORAGE_ACCOUNT = CREATE + ' ' + STORAGE_ACCOUNT
-CREATE_CLOUD_SERVICE = CREATE + ' ' + CLOUD_SERVICE
-CREATE_VIRTUAL_MACHINES = CREATE + ' ' + VIRTUAL_MACHINES
-CREATE_DEPLOYMENT = CREATE + ' ' + DEPLOYMENT
-CREATE_VIRTUAL_MACHINE = CREATE + ' ' + VIRTUAL_MACHINE
-UPDATE = 'update'
-UPDATE_VIRTUAL_MACHINE = UPDATE + ' ' + VIRTUAL_MACHINE
-DELETE = 'delete'
-DELETE_DEPLOYMENT = DELETE + ' ' + DEPLOYMENT
-DELETE_VIRTUAL_MACHINE = DELETE + ' ' + VIRTUAL_MACHINE
-SHUTDOWN = 'shutdown'
-SHUTDOWN_VIRTUAL_MACHINE = SHUTDOWN + ' ' + VIRTUAL_MACHINE
-# operation status in table UserOperation
-START = 'start'
-FAIL = 'fail'
-END = 'end'
 # os family name
 WINDOWS = 'Windows'
 LINUX = 'Linux'
