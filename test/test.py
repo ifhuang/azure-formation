@@ -1,17 +1,12 @@
 __author__ = 'Yifu Huang'
 
 
-class A:
-    def __init__(self):
-        print 'init from A'
+from src.app.azureformation.service import Service
+from src.app.azureformation.subscription import Subscription
+from src.app.credentials import *
 
-    def __repr__(self):
-        return self.__class__.__name__
-
-
-class B(A):
-    pass
-
-
-A()
-B()
+service = Service(SUBSCRIPTION_ID, PEM_CERTIFICATE, MANAGEMENT_HOST)
+subscription = Subscription(service)
+print subscription.get_available_storage_account_count()
+print subscription.get_available_cloud_service_count()
+print subscription.get_available_core_count()
