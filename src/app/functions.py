@@ -1,6 +1,6 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.config import Config
+from src.app.config import Config
 
 
 def get_config(key):

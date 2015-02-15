@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.database import *
-from src.azureformation.database.models import *
-from src.azureformation.log import *
+from src.app.database import *
+from src.app.database.models import *
+from src.app.log import *
 from abc import *
 
 

@@ -1,9 +1,9 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.cloudABC import CloudABC
-from src.azureformation.azureStorage import *
-from src.azureformation.azureCloudService import *
-from src.azureformation.azureVirtualMachines import *
+from src.app.cloudABC import CloudABC
+from src.app.azureStorage import *
+from src.app.azureCloudService import *
+from src.app.azureVirtualMachines import *
 from azure.servicemanagement import *
 from multiprocessing import Process
 import os

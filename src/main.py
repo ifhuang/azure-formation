@@ -1,11 +1,11 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation import credentials
-from src.azureformation.azureImpl import AzureImpl
-from src.azureformation.azureUtil import *
-from src.azureformation.database import *
-from src.azureformation.database.models import *
-from src.azureformation.log import *
+from src.app import credentials
+from src.app.azureImpl import AzureImpl
+from src.app.azureUtil import *
+from src.app.database import *
+from src.app.database.models import *
+from src.app.log import *
 from subprocess import Popen
 import sys
 import time

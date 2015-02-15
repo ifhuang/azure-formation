@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureImpl import AzureImpl
-from src.azureformation.database import *
-from src.azureformation.database.models import *
+from src.app.azureImpl import AzureImpl
+from src.app.database import *
+from src.app.database.models import *
 import sys
 
 if __name__ == "__main__":

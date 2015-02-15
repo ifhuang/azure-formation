@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureUtil import *
-from src.azureformation.log import *
-from src.azureformation.database import *
+from src.app.azureUtil import *
+from src.app.log import *
+from src.app.database import *
 
 
 class AzureStorage:

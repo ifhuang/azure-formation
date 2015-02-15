@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureUtil import *
-from src.azureformation.database import *
-from src.azureformation.database.models import *
+from src.app.azureUtil import *
+from src.app.database import *
+from src.app.database.models import *
 from azure.servicemanagement import *
 import datetime
 
