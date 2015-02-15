@@ -1,9 +1,11 @@
 __author__ = 'Yifu Huang'
 
 from src.app.azureformation.subscription import Subscription
-from src.app.azureformation.azureUtil import *
-from src.app.log import *
-from src.app.database import *
+from src.app.azureformation.utility import NOT_FOUND, commit_azure_log, ALStatus, STORAGE_ACCOUNT
+from src.app.log import log
+from src.app.database import db_adapter
+from src.app.database.models import AzureStorageAccount
+from src.app.enum import ALOperation
 
 
 class StorageAccount:
@@ -16,24 +18,23 @@ class StorageAccount:
         self.service = service
         self.subscription = Subscription(service)
 
-    def create_storage_account(self):
+    def create_storage_account(self, experiment, name, description, label, location):
         """
         If storage account not exist in azure, then create it
         Else reuse storage account in azure
         :return:
         """
-        user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, START)
-        storage_account = self.template_config['storage_account']
+        commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.START)
         # avoid duplicate storage account
-        if not self.__storage_account_exists(storage_account['service_name']):
+        if not self.__storage_account_exists(name):
             # delete old info in database
             db_adapter.delete_all_objects(UserResource, type=STORAGE_ACCOUNT, name=storage_account['service_name'])
             db_adapter.commit()
             try:
-                result = self.service.create_storage_account(storage_account['service_name'],
-                                                         storage_account['description'],
-                                                         storage_account['label'],
-                                                         location=storage_account['location'])
+                result = self.service.create_storage_account(name,
+                                                             description,
+                                                             label,
+                                                             location)
             except Exception as e:
                 user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, FAIL, e.message)
                 log.error(e)
@@ -55,35 +56,36 @@ class StorageAccount:
                 user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, END)
         else:
             # check whether storage account created by this function before
-            if db_adapter.count(UserResource, type=STORAGE_ACCOUNT, name=storage_account['service_name']) == 0:
-                m = '%s %s exist but not created by this function before' %\
+            if db_adapter.count(AzureStorageAccount, name=name) == 0:
+                m = '%s %s exist but not created by this function before' % \
                     (STORAGE_ACCOUNT, storage_account['service_name'])
                 user_resource_commit(self.user_template, STORAGE_ACCOUNT, storage_account['service_name'], RUNNING)
             else:
-                m = '%s %s exist and created by this function before' %\
-                    (STORAGE_ACCOUNT, storage_account['service_name'])
+                m = '%s %s exist and created by this function before' % (STORAGE_ACCOUNT, name)
             user_operation_commit(self.user_template, CREATE_STORAGE_ACCOUNT, END, m)
             log.debug(m)
         return True
 
+    # todo update storage account
     def update_storage_account(self):
-        pass
+        raise NotImplementedError
 
+    # todo delete storage account
     def delete_storage_account(self):
-        pass
+        raise NotImplementedError
 
     # --------------------------------------------helper function-------------------------------------------- #
 
     def __storage_account_exists(self, name):
         """
-        Check whether specific storage account exist
+        Check whether specific storage account exist in azure
         :param name:
         :return:
         """
         try:
             props = self.service.get_storage_account_properties(name)
         except Exception as e:
-            if e.message != 'Not found (Not Found)':
-                log.error('%s %s: %s' % (STORAGE_ACCOUNT, name, e))
+            if e.message != NOT_FOUND:
+                log.error(e)
             return False
         return props is not None

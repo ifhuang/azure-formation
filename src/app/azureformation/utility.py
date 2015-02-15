@@ -41,6 +41,8 @@ T_CLOUD_SERVICE = 'cloud_service'
 T_DEPLOYMENT = 'deployment'
 T_VIRTUAL_MACHINES = 'virtual_machines'
 R_VIRTUAL_ENVIRONMENTS = 'virtual_environments'
+# message when resource not found in azure
+NOT_FOUND = 'Not found (Not Found)'
 # -------------------------------------------------- constants --------------------------------------------------#
 
 
