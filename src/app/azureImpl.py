@@ -1,13 +1,14 @@
 __author__ = 'Yifu Huang'
 
-from src.app.cloudABC import CloudABC
-from src.app.azureStorage import *
-from src.app.azureCloudService import *
-from src.app.azureVirtualMachines import *
-from azure.servicemanagement import *
 from multiprocessing import Process
 import os
 import commands
+
+from azure.servicemanagement import *
+
+from src.app.cloudABC import CloudABC
+from src.app.azureformation.azureStorage import *
+from src.app.azureVirtualMachines import *
 
 
 class AzureImpl(CloudABC):

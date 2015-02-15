@@ -1,6 +1,6 @@
 __author__ = 'Yifu Huang'
 
-from src.app.azureUtil import *
+from src.app.azureformation.azureUtil import *
 from src.app.log import *
 from src.app.database import *
 

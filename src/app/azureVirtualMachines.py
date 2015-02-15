@@ -1,10 +1,12 @@
 __author__ = 'Yifu Huang'
 
-from src.app.azureUtil import *
+import datetime
+
+from azure.servicemanagement import *
+
+from src.app.azureformation.azureUtil import *
 from src.app.database import *
 from src.app.database.models import *
-from azure.servicemanagement import *
-import datetime
 
 
 class AzureVirtualMachines:

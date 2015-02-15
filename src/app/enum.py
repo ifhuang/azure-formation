@@ -1,10 +1,6 @@
 __author__ = 'Yifu Huang'
 
-
-STORAGE_ACCOUNT = 'storage account'
-CLOUD_SERVICE = 'cloud service'
-DEPLOYMENT = 'deployment'
-VIRTUAL_MACHINE = 'virtual machine'
+from src.app.azureformation.utility import STORAGE_ACCOUNT, CLOUD_SERVICE, DEPLOYMENT, VIRTUAL_MACHINE
 
 
 class AKOwner:

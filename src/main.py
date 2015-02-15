@@ -1,14 +1,16 @@
 __author__ = 'Yifu Huang'
 
-from src.app import credentials
-from src.app.azureImpl import AzureImpl
-from src.app.azureUtil import *
-from src.app.database import *
-from src.app.database.models import *
-from src.app.log import *
 from subprocess import Popen
 import sys
 import time
+
+from src.app import credentials
+from src.app.azureImpl import AzureImpl
+from src.app.azureformation.azureUtil import *
+from src.app.database import *
+from src.app.database.models import *
+from src.app.log import *
+
 
 # this is how client execute
 
