@@ -178,6 +178,7 @@ class AzureStorageAccount(DBBase):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
     description = db.Column(db.String(100))
+    label = db.Column(db.String(50))
     location = db.Column(db.String(50))
     # ASAStatus in enum.py
     status = db.Column(db.String(50))
@@ -278,7 +279,7 @@ class AzureEndPoint(DBBase):
     public_port = db.Column(db.Integer)
     private_port = db.Column(db.Integer)
     virtual_machine_id = db.Column(db.Integer, db.ForeignKey('azure_virtual_machine.id', ondelete='CASCADE'))
-    virtual_machine = db.relationship('AzureEndPoint', backref=db.backref('azure_end_point', lazy='dynamic'))
+    virtual_machine = db.relationship('AzureVirtualMachine', backref=db.backref('azure_end_point', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 

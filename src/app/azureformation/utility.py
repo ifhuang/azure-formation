@@ -9,11 +9,6 @@ import os
 import json
 
 # -------------------------------------------------- constants --------------------------------------------------#
-# resource type used by ALOperation in enum.py
-STORAGE_ACCOUNT = 'storage account'
-CLOUD_SERVICE = 'cloud service'
-DEPLOYMENT = 'deployment'
-VIRTUAL_MACHINE = 'virtual machine'
 # resource status in program
 READY_ROLE = 'ReadyRole'
 STOPPED_VM = 'StoppedVM'
