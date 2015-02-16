@@ -1,6 +1,6 @@
 __author__ = 'Yifu Huang'
 
-from src.app import app
+from src.azureformation import app
 
 
 @app.route('/')

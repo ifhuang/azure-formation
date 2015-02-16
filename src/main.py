@@ -4,12 +4,12 @@ from subprocess import Popen
 import sys
 import time
 
-from src.app import credentials
-from src.app.azureImpl import AzureImpl
-from src.app.azureformation.azureUtil import *
-from src.app.database import *
-from src.app.database.models import *
-from src.app.log import *
+from src.azureformation import credentials
+from src.azureformation.azureImpl import AzureImpl
+from src.azureformation.azureoperation.azureUtil import *
+from src.azureformation.database import *
+from src.azureformation.database.models import *
+from src.azureformation.log import *
 
 
 # this is how client execute

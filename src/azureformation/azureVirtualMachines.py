@@ -4,9 +4,9 @@ import datetime
 
 from azure.servicemanagement import *
 
-from src.app.azureformation.azureUtil import *
-from src.app.database import *
-from src.app.database.models import *
+from src.azureformation.azureoperation.azureUtil import *
+from src.azureformation.database import *
+from src.azureformation.database.models import *
 
 
 class AzureVirtualMachines:

@@ -1,7 +1,7 @@
 __author__ = 'Yifu Huang'
 
-from src.app.database import db
-from src.app.log import log
+from src.azureformation.database import db
+from src.azureformation.log import log
 from datetime import datetime
 import json
 

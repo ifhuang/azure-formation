@@ -1,9 +1,9 @@
 __author__ = 'Yifu Huang'
 
-from src.app.database import db_adapter
-from src.app.database.models import AzureLog
-from src.app.log import log
-from src.app.enum import ALStatus
+from src.azureformation.database import db_adapter
+from src.azureformation.database.models import AzureLog
+from src.azureformation.log import log
+from src.azureformation.enum import ALStatus
 import time
 import os
 import json

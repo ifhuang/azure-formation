@@ -1,11 +1,11 @@
 __author__ = 'Yifu Huang'
 
-from src.app.azureformation.subscription import Subscription
-from src.app.azureformation.utility import commit_azure_log
-from src.app.log import log
-from src.app.database import db_adapter
-from src.app.database.models import AzureCloudService
-from src.app.enum import ALOperation, ALStatus, ACSStatus, CLOUD_SERVICE
+from src.azureformation.azureoperation.subscription import Subscription
+from src.azureformation.azureoperation.utility import commit_azure_log
+from src.azureformation.log import log
+from src.azureformation.database import db_adapter
+from src.azureformation.database.models import AzureCloudService
+from src.azureformation.enum import ALOperation, ALStatus, ACSStatus, CLOUD_SERVICE
 
 
 class CloudService:

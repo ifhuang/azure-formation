@@ -1,17 +1,17 @@
 __author__ = 'Yifu Huang'
 
-from src.app.azureformation.subscription import Subscription
-from src.app.azureformation.utility import (
+from src.azureformation.azureoperation.subscription import Subscription
+from src.azureformation.azureoperation.utility import (
     ASYNC_TICK,
     ASYNC_LOOP,
     WAIT_FOR_ASYNC,
     commit_azure_log,
     wait_for_async
 )
-from src.app.log import log
-from src.app.database import db_adapter
-from src.app.database.models import AzureStorageAccount
-from src.app.enum import ALOperation, ALStatus, ASAStatus, STORAGE_ACCOUNT
+from src.azureformation.log import log
+from src.azureformation.database import db_adapter
+from src.azureformation.database.models import AzureStorageAccount
+from src.azureformation.enum import ALOperation, ALStatus, ASAStatus, STORAGE_ACCOUNT
 
 
 class StorageAccount:

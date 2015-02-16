@@ -1,6 +1,6 @@
 __author__ = 'Yifu Huang'
 
-from src.app.database.models import db
+from src.azureformation.database.models import db
 
 # initialize db tables
 # make sure database and user correctly created in mysql

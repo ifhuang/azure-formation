@@ -6,9 +6,9 @@ import commands
 
 from azure.servicemanagement import *
 
-from src.app.cloudABC import CloudABC
-from src.app.azureformation.azureStorage import *
-from src.app.azureVirtualMachines import *
+from src.azureformation.cloudABC import CloudABC
+from src.azureformation.azureoperation.azureStorage import *
+from src.azureformation.azureVirtualMachines import *
 
 
 class AzureImpl(CloudABC):

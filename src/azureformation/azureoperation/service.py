@@ -1,8 +1,8 @@
 __author__ = 'Yifu Huang'
 
 
-from src.app.azureformation.utility import NOT_FOUND
-from src.app.log import log
+from src.azureformation.azureoperation.utility import NOT_FOUND
+from src.azureformation.log import log
 from azure.servicemanagement import ServiceManagementService
 
 
@@ -19,7 +19,7 @@ class Service(ServiceManagementService):
     def get_subscription(self):
         return super(Service, self).get_subscription()
 
-    # ---------------------------------------- storage ---------------------------------------- #
+    # ---------------------------------------- storage account ---------------------------------------- #
 
     def get_storage_account_properties(self, name):
         return super(Service, self).get_storage_account_properties(name)
