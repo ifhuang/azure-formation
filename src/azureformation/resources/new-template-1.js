@@ -1,26 +1,26 @@
 {
-    "expr_name": "azure vm test 1",
-    "description" : "one storage account, one container, one cloud service, one deployment, multiple virtual machines (Windows/Linux), multiple input endpoints",
-    "storage_account" : {
-        "service_name" : "opentech0storage",
-        "description" : "yifu-test-description",
-        "label" : "yifu-test-label",
-        "location" : "China East",
-        "url_base" : "blob.core.chinacloudapi.cn"
-    },
-    "container" : "open-tech-container",
-    "cloud_service" : {
-        "service_name" : "yifu-test-service-name",
-        "label" : "yifu-test-label",
-        "location" : "China East"
-    },
-    "deployment" :{
-        "deployment_name" : "yifu-test-deployment-name",
-        "deployment_slot" : "production"
-    },
+    "expr_name": "azure vm",
+    "description" : "a virtual environment is a virtual machine with its storage account, container, cloud service and deployment",
     "virtual_environments": [
         {
             "provider": "azure",
+            "storage_account" : {
+                "service_name" : "opentech0storage",
+                "description" : "yifu-test-description",
+                "label" : "yifu-test-label",
+                "location" : "China East",
+                "url_base" : "blob.core.chinacloudapi.cn"
+            },
+            "container" : "open-tech-container",
+            "cloud_service" : {
+                "service_name" : "yifu-test-service-name",
+                "label" : "yifu-test-label",
+                "location" : "China East"
+            },
+            "deployment" :{
+                "deployment_name" : "yifu-test-deployment-name",
+                "deployment_slot" : "production"
+            },
             "label" : "yifu-test-label",
             "role_name" : "yifu-test-role-name",
             "system_config" : {
@@ -51,6 +51,23 @@
         },
         {
             "provider": "azure",
+            "storage_account" : {
+                "service_name" : "opentech0storage",
+                "description" : "yifu-test-description",
+                "label" : "yifu-test-label",
+                "location" : "China East",
+                "url_base" : "blob.core.chinacloudapi.cn"
+            },
+            "container" : "open-tech-container",
+            "cloud_service" : {
+                "service_name" : "yifu-test-service-name",
+                "label" : "yifu-test-label",
+                "location" : "China East"
+            },
+            "deployment" :{
+                "deployment_name" : "yifu-test-deployment-name",
+                "deployment_slot" : "production"
+            },
             "label" : "yifu-test-label-2",
             "role_name" : "yifu-test-role-name-2",
             "system_config" : {

@@ -29,13 +29,13 @@ class CloudService:
             # avoid name already taken by others
             if not self.service.check_hosted_service_name_availability(name).result:
                 m = '%s [%s] name not available' % (CLOUD_SERVICE, name)
-                commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.FAIL)
+                commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.FAIL, m)
                 log.error(m)
                 return False
             # avoid no available subscription remained
             if self.subscription.get_available_cloud_service_count() < 1:
                 m = '%s [%s] subscription not enough' % (CLOUD_SERVICE, name)
-                commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.FAIL)
+                commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.FAIL, m)
                 log.error(m)
                 return False
             # delete old cloud service info in database, cascade delete old deployment, old virtual machine,

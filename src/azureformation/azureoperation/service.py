@@ -69,6 +69,47 @@ class Service(ServiceManagementService):
     def create_hosted_service(self, name, label, location):
         return super(Service, self).create_hosted_service(name, label, location=location)
 
+    # ---------------------------------------- deployment ---------------------------------------- #
+
+    def get_deployment_by_slot(self, service_name, deployment_slot):
+        return super(Service, self).get_deployment_by_slot(service_name, deployment_slot)
+
+    def deployment_exists(self, service_name, deployment_slot):
+        """
+        Check whether specific deployment slot exist in specific azure subscription
+        :param service_name:
+        :param deployment_slot:
+        :return:
+        """
+        try:
+            props = self.get_deployment_by_slot(service_name, deployment_slot)
+        except Exception as e:
+            if e.message != NOT_FOUND:
+                log.error(e)
+            return False
+        return props is not None
+
+    # ---------------------------------------- virtual machine ---------------------------------------- #
+
+    def get_role(self, service_name, deployment_name, role_name):
+        return super(Service, self).get_role(service_name, deployment_name, role_name)
+
+    def role_exists(self, service_name, deployment_name, role_name):
+        """
+        Check whether specific virtual machine exist in specific azure subscription
+        :param service_name:
+        :param deployment_name:
+        :param role_name:
+        :return:
+        """
+        try:
+            props = self.get_role(service_name, deployment_name, role_name)
+        except Exception as e:
+            if e.message != NOT_FOUND:
+                log.error(e)
+            return False
+        return props is not None
+
     # ---------------------------------------- other ---------------------------------------- #
 
     def get_operation_status(self, request_id):

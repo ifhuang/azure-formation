@@ -35,13 +35,13 @@ class StorageAccount:
             # avoid name already taken by others
             if not self.service.check_storage_account_name_availability(name).result:
                 m = '%s [%s] name not available' % (STORAGE_ACCOUNT, name)
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m)
                 log.error(m)
                 return False
             # avoid no available subscription remained
             if self.subscription.get_available_storage_account_count() < 1:
                 m = '%s [%s] subscription not enough' % (STORAGE_ACCOUNT, name)
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m)
                 log.error(m)
                 return False
             # delete old info in database

@@ -4,11 +4,9 @@ from multiprocessing import Process
 import os
 import commands
 
-from azure.servicemanagement import *
-
 from src.azureformation.cloudABC import CloudABC
 from src.azureformation.azureoperation.azureStorage import *
-from src.azureformation.azureVirtualMachines import *
+from src.azureformation.azureoperation.azureVirtualMachines import *
 
 
 class AzureImpl(CloudABC):
