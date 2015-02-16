@@ -2,8 +2,6 @@ __author__ = 'Yifu Huang'
 
 from src.app.azureformation.subscription import Subscription
 from src.app.azureformation.utility import (
-    NOT_FOUND,
-    ALStatus,
     ASYNC_TICK,
     ASYNC_LOOP,
     WAIT_FOR_ASYNC,
@@ -13,7 +11,7 @@ from src.app.azureformation.utility import (
 from src.app.log import log
 from src.app.database import db_adapter
 from src.app.database.models import AzureStorageAccount
-from src.app.enum import ALOperation, ASAStatus, STORAGE_ACCOUNT
+from src.app.enum import ALOperation, ALStatus, ASAStatus, STORAGE_ACCOUNT
 
 
 class StorageAccount:
@@ -33,10 +31,16 @@ class StorageAccount:
         """
         commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.START)
         # avoid duplicate storage account
-        if not self.__storage_account_exists(name):
+        if not self.service.storage_account_exists(name):
             # avoid name already taken by others
             if not self.service.check_storage_account_name_availability(name).result:
-                m = '%s [%s] not available' % (STORAGE_ACCOUNT, name)
+                m = '%s [%s] name not available' % (STORAGE_ACCOUNT, name)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL)
+                log.error(m)
+                return False
+            # avoid no available subscription remained
+            if self.subscription.get_available_storage_account_count() < 1:
+                m = '%s [%s] subscription not enough' % (STORAGE_ACCOUNT, name)
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL)
                 log.error(m)
                 return False
@@ -59,7 +63,7 @@ class StorageAccount:
                 log.error(m)
                 return False
             # make sure storage account exists
-            if not self.__storage_account_exists(name):
+            if not self.service.storage_account_exists(name):
                 m = '%s [%s] created but not exist' % (STORAGE_ACCOUNT, name)
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m)
                 log.error(m)
@@ -99,19 +103,3 @@ class StorageAccount:
     # todo delete storage account
     def delete_storage_account(self):
         raise NotImplementedError
-
-    # --------------------------------------------helper function-------------------------------------------- #
-
-    def __storage_account_exists(self, name):
-        """
-        Check whether specific storage account exist in specific azure subscription
-        :param name:
-        :return:
-        """
-        try:
-            props = self.service.get_storage_account_properties(name)
-        except Exception as e:
-            if e.message != NOT_FOUND:
-                log.error(e)
-            return False
-        return props is not None

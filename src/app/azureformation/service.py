@@ -1,6 +1,8 @@
 __author__ = 'Yifu Huang'
 
 
+from src.app.azureformation.utility import NOT_FOUND
+from src.app.log import log
 from azure.servicemanagement import ServiceManagementService
 
 
@@ -19,14 +21,53 @@ class Service(ServiceManagementService):
 
     # ---------------------------------------- storage ---------------------------------------- #
 
-    def get_storage_account_properties(self, service_name):
-        return super(Service, self).get_storage_account_properties(service_name)
+    def get_storage_account_properties(self, name):
+        return super(Service, self).get_storage_account_properties(name)
 
-    def check_storage_account_name_availability(self, service_name):
-        return super(Service, self).check_storage_account_name_availability(service_name)
+    def storage_account_exists(self, name):
+        """
+        Check whether specific storage account exist in specific azure subscription
+        :param name:
+        :return:
+        """
+        try:
+            props = self.get_storage_account_properties(name)
+        except Exception as e:
+            if e.message != NOT_FOUND:
+                log.error(e)
+            return False
+        return props is not None
 
-    def create_storage_account(self, service_name, description, label, location):
-        return super(Service, self).create_storage_account(service_name, description, label, location=location)
+    def check_storage_account_name_availability(self, name):
+        return super(Service, self).check_storage_account_name_availability(name)
+
+    def create_storage_account(self, name, description, label, location):
+        return super(Service, self).create_storage_account(name, description, label, location=location)
+
+    # ---------------------------------------- cloud service ---------------------------------------- #
+
+    def get_hosted_service_properties(self, name):
+        return super(Service, self).get_hosted_service_properties(name)
+
+    def cloud_service_exists(self, name):
+        """
+        Check whether specific cloud service exist in specific azure subscription
+        :param name:
+        :return:
+        """
+        try:
+            props = self.get_hosted_service_properties(name)
+        except Exception as e:
+            if e.message != NOT_FOUND:
+                log.error(e)
+            return False
+        return props is not None
+
+    def check_hosted_service_name_availability(self, name):
+        return super(Service, self).check_hosted_service_name_availability(name)
+
+    def create_hosted_service(self, name, label, location):
+        return super(Service, self).create_hosted_service(name, label, location=location)
 
     # ---------------------------------------- other ---------------------------------------- #
 

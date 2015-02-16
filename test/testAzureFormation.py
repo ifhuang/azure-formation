@@ -3,6 +3,7 @@ __author__ = 'Yifu Huang'
 from src.app.azureformation.service import Service
 from src.app.azureformation.subscription import Subscription
 from src.app.azureformation.storageAccount import StorageAccount
+from src.app.azureformation.cloudService import CloudService
 from src.app.credentials import SUBSCRIPTION_ID, PEM_CERTIFICATE, MANAGEMENT_HOST
 import unittest
 
@@ -32,6 +33,14 @@ class TestAzureFormation(unittest.TestCase):
         result = storage.create_storage_account('testppp', 'description', 'label', 'China East', None)
         self.assertTrue(result)
 
+    def test_cloud_service(self):
+        cloud = CloudService(self.service)
+        result = cloud.create_cloud_service('open-xml-host', 'label', 'China East', None)
+        self.assertTrue(result)
+        result = cloud.create_cloud_service('open-hackathon', 'label', 'China East', None)
+        self.assertFalse(result)
+        result = cloud.create_cloud_service('open-xml-host-2', 'label', 'China East', None)
+        self.assertTrue(result)
 
 if __name__ == '__main__':
     unittest.main()
