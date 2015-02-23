@@ -34,6 +34,7 @@ create_storage_account_error = [
     '%s [%s] created but not exist'
 ]
 create_storage_account_info = [
+    '%s [%s] created',
     '%s [%s] exist but not created by %s before',
     '%s [%s] exist and created by %s before'
 ]
@@ -95,6 +96,7 @@ class StorageAccount:
                 log.error(m)
                 return False
             else:
+                m = create_storage_account_info[0] % (STORAGE_ACCOUNT, name)
                 db_adapter.add_object_kwargs(AzureStorageAccount,
                                              name=name,
                                              description=description,
@@ -103,11 +105,12 @@ class StorageAccount:
                                              status=ASAStatus.ONLINE,
                                              experiment=experiment)
                 db_adapter.commit()
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 0)
+                log.debug(m)
         else:
-            # check whether storage account created by this function before
+            # check whether storage account created by azure formation before
             if db_adapter.count(AzureStorageAccount, name=name) == 0:
-                m = create_storage_account_info[0] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
+                m = create_storage_account_info[1] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
                 db_adapter.add_object_kwargs(AzureStorageAccount,
                                              name=name,
                                              description=description,
@@ -116,9 +119,10 @@ class StorageAccount:
                                              status=ASAStatus.ONLINE,
                                              experiment=experiment)
                 db_adapter.commit()
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 1)
             else:
-                m = create_storage_account_info[1] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
-            commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m)
+                m = create_storage_account_info[2] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 2)
             log.debug(m)
         return True
 

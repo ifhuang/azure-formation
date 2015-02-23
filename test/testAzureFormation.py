@@ -49,6 +49,8 @@ class TestAzureFormation(unittest.TestCase):
         cloud = CloudService(self.service)
         result = cloud.create_cloud_service('open-xml-host', 'label', 'China East', None)
         self.assertTrue(result)
+        result = cloud.create_cloud_service('open-xml-host', 'label', 'China East', None)
+        self.assertTrue(result)
         result = cloud.create_cloud_service('open-hackathon', 'label', 'China East', None)
         self.assertFalse(result)
         result = cloud.create_cloud_service('open-xml-host-2', 'label', 'China East', None)
