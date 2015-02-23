@@ -7,7 +7,6 @@ from src.azureformation.azureoperation.utility import (
     AZURE_FORMATION,
     ASYNC_TICK,
     ASYNC_LOOP,
-    WAIT_FOR_ASYNC,
     commit_azure_log,
     wait_for_async
 )
@@ -26,6 +25,18 @@ from src.azureformation.enum import (
     ASAStatus,
     STORAGE_ACCOUNT
 )
+
+create_storage_account_error = [
+    '%s [%s] %s',
+    '%s [%s] name not available',
+    '%s [%s] subscription not enough',
+    '%s [%s] wait for async fail',
+    '%s [%s] created but not exist'
+]
+create_storage_account_info = [
+    '%s [%s] exist but not created by %s before',
+    '%s [%s] exist and created by %s before'
+]
 
 
 class StorageAccount:
@@ -46,16 +57,16 @@ class StorageAccount:
         commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.START)
         # avoid duplicate storage account in azure subscription
         if not self.service.storage_account_exists(name):
-            # avoid name already taken by others
+            # avoid name already taken by other azure subscription
             if not self.service.check_storage_account_name_availability(name).result:
-                m = '%s [%s] name not available' % (STORAGE_ACCOUNT, name)
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m)
+                m = create_storage_account_error[1] % (STORAGE_ACCOUNT, name)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 1)
                 log.error(m)
                 return False
             # avoid no available subscription remained
             if self.subscription.get_available_storage_account_count() < 1:
-                m = '%s [%s] subscription not enough' % (STORAGE_ACCOUNT, name)
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m)
+                m = create_storage_account_error[2] % (STORAGE_ACCOUNT, name)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 2)
                 log.error(m)
                 return False
             # delete old info in database
@@ -67,19 +78,20 @@ class StorageAccount:
                                                              label,
                                                              location)
             except Exception as e:
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, e.message)
+                m = create_storage_account_error[0] % (STORAGE_ACCOUNT, name, e.message)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 0)
                 log.error(e)
                 return False
-            # make sure async operation succeeds
+            # make sure async operation succeed
             if not wait_for_async(self.service, result.request_id, ASYNC_TICK, ASYNC_LOOP):
-                m = WAIT_FOR_ASYNC + ' ' + ALStatus.FAIL
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m)
+                m = create_storage_account_error[3] % (STORAGE_ACCOUNT, name)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 3)
                 log.error(m)
                 return False
             # make sure storage account exists
             if not self.service.storage_account_exists(name):
-                m = '%s [%s] created but not exist' % (STORAGE_ACCOUNT, name)
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m)
+                m = create_storage_account_error[4] % (STORAGE_ACCOUNT, name)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 4)
                 log.error(m)
                 return False
             else:
@@ -95,7 +107,7 @@ class StorageAccount:
         else:
             # check whether storage account created by this function before
             if db_adapter.count(AzureStorageAccount, name=name) == 0:
-                m = '%s [%s] exist but not created by %s before' % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
+                m = create_storage_account_info[0] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
                 db_adapter.add_object_kwargs(AzureStorageAccount,
                                              name=name,
                                              description=description,
@@ -105,7 +117,7 @@ class StorageAccount:
                                              experiment=experiment)
                 db_adapter.commit()
             else:
-                m = '%s [%s] exist and created by %s before' % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
+                m = create_storage_account_info[1] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
             commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m)
             log.debug(m)
         return True

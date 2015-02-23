@@ -51,12 +51,13 @@ NOT_FOUND = 'Not found (Not Found)'
 # -------------------------------------------------- constants --------------------------------------------------#
 
 
-def commit_azure_log(experiment, operation, status, note=None):
+def commit_azure_log(experiment, operation, status, note=None, code=None):
     """
     Commit azure log to database
     :param experiment:
     :param operation:
     :param status:
+    :param code:
     :param note:
     :return:
     """
@@ -64,7 +65,8 @@ def commit_azure_log(experiment, operation, status, note=None):
                                  experiment=experiment,
                                  operation=operation,
                                  status=status,
-                                 note=note)
+                                 note=note,
+                                 code=code)
     db_adapter.commit()
 
 

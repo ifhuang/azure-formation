@@ -166,8 +166,10 @@ class AzureLog(DBBase):
     operation = db.Column(db.String(50))
     # ALStatus in enum.py
     status = db.Column(db.String(50))
-    code = db.Column(db.Integer)
+    # Note if no info and error
     note = db.Column(db.String(500))
+    # None if no error
+    code = db.Column(db.Integer)
     experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
     experiment = db.relationship('Experiment', backref=db.backref('azure_log', lazy='dynamic'))
     exec_time = db.Column(db.DateTime)
