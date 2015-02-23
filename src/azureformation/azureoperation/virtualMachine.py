@@ -1,6 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureoperation.subscription import Subscription
+from src.azureformation.azureoperation.subscription import (
+    Subscription
+)
 from src.azureformation.azureoperation.utility import (
     T_STORAGE_ACCOUNT,
     T_CONTAINER,
@@ -8,13 +10,18 @@ from src.azureformation.azureoperation.utility import (
     T_DEPLOYMENT,
     commit_azure_log
 )
-from src.azureformation.database import db_adapter
+from src.azureformation.database import (
+    db_adapter
+)
 from src.azureformation.database.models import(
     AzureCloudService,
     AzureDeployment,
     AzureVirtualMachine
 )
-from src.azureformation.enum import ALOperation, ALStatus
+from src.azureformation.enum import (
+    ALOperation,
+    ALStatus
+)
 import datetime
 
 

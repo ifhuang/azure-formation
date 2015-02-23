@@ -1,6 +1,8 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.log import log
+from src.azureformation.log import (
+    log
+)
 
 
 class Subscription:

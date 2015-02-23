@@ -1,17 +1,31 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureoperation.subscription import Subscription
+from src.azureformation.azureoperation.subscription import(
+    Subscription
+)
 from src.azureformation.azureoperation.utility import (
+    AZURE_FORMATION,
     ASYNC_TICK,
     ASYNC_LOOP,
     WAIT_FOR_ASYNC,
     commit_azure_log,
     wait_for_async
 )
-from src.azureformation.log import log
-from src.azureformation.database import db_adapter
-from src.azureformation.database.models import AzureStorageAccount
-from src.azureformation.enum import ALOperation, ALStatus, ASAStatus, STORAGE_ACCOUNT
+from src.azureformation.log import (
+    log
+)
+from src.azureformation.database import (
+    db_adapter
+)
+from src.azureformation.database.models import (
+    AzureStorageAccount
+)
+from src.azureformation.enum import (
+    ALOperation,
+    ALStatus,
+    ASAStatus,
+    STORAGE_ACCOUNT
+)
 
 
 class StorageAccount:
@@ -30,7 +44,7 @@ class StorageAccount:
         :return:
         """
         commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.START)
-        # avoid duplicate storage account
+        # avoid duplicate storage account in azure subscription
         if not self.service.storage_account_exists(name):
             # avoid name already taken by others
             if not self.service.check_storage_account_name_availability(name).result:
@@ -81,17 +95,17 @@ class StorageAccount:
         else:
             # check whether storage account created by this function before
             if db_adapter.count(AzureStorageAccount, name=name) == 0:
-                m = '%s [%s] exist but not created by this function before' % (STORAGE_ACCOUNT, name)
+                m = '%s [%s] exist but not created by %s before' % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
                 db_adapter.add_object_kwargs(AzureStorageAccount,
                                              name=name,
                                              description=description,
-                                             location=location,
                                              label=label,
+                                             location=location,
                                              status=ASAStatus.ONLINE,
                                              experiment=experiment)
                 db_adapter.commit()
             else:
-                m = '%s [%s] exist and created by this function before' % (STORAGE_ACCOUNT, name)
+                m = '%s [%s] exist and created by %s before' % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
             commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m)
             log.debug(m)
         return True

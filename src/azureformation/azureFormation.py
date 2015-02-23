@@ -1,15 +1,7 @@
 __author__ = 'Yifu Huang'
 
-from multiprocessing import Process
-import os
-import commands
 
-from src.azureformation.cloudABC import CloudABC
-from src.azureformation.azureoperation.azureStorage import *
-from src.azureformation.azureoperation.azureVirtualMachines import *
-
-
-class AzureImpl(CloudABC):
+class AzureFormation():
     """
     Azure cloud service management
     For logic: besides resources created by this program itself, it can reuse other storage,
@@ -19,7 +11,7 @@ class AzureImpl(CloudABC):
     """
 
     def __init__(self):
-        super(AzureImpl, self).__init__()
+        super(AzureFormation, self).__init__()
         self.sms = None
         self.user_template = None
         self.template_config = None
@@ -36,7 +28,7 @@ class AzureImpl(CloudABC):
         :param management_host:
         :return: user info
         """
-        user_info = super(AzureImpl, self).register(name, email)
+        user_info = super(AzureFormation, self).register(name, email)
         certificates_dir = os.path.dirname(__file__) + os.path.sep + 'certificates'
         # make sure certificate dir exists
         if not os.path.isdir(certificates_dir):

@@ -1,4 +1,7 @@
-from os.path import realpath, dirname
+from os.path import (
+    realpath,
+    dirname
+)
 import logging
 import logging.config
 

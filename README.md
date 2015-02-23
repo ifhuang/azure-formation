@@ -1,12 +1,12 @@
 # Azure Formation
 
-- Azure Formation offers Open Hackathon users an automated way to manage related Azure resources, including storage,
-container, cloud service, deployment and virtual machine. Users can use public or private templates to describe Azure
-resources. Azure Formation creates, updates or deletes Azure resources in templates according to users' requests.
+- Azure Formation offers an automated way to manage related Azure resources, including storage, container,
+cloud service, deployment and virtual machine. Jason based templates are used to describe Azure resources.
+Azure Formation creates, updates or deletes Azure resources in templates according to users' requests.
 - For logic: besides resources created by Azure Formation, it can reuse other storage, container, cloud service
 and deployment exist in Azure (by sync them into database).
-- For template: one storage account, one container, one cloud service, one deployment, multiple virtual machines
-(Windows/Linux), multiple input endpoints.
+- For template: a template consists of a list of virtual environments, and a virtual environment is a virtual machine
+with its storage account, container, cloud service and deployment.
 
 # Archive
 

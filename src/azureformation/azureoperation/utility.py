@@ -1,14 +1,24 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.database import db_adapter
-from src.azureformation.database.models import AzureLog
-from src.azureformation.log import log
-from src.azureformation.enum import ALStatus
+from src.azureformation.database import (
+    db_adapter
+)
+from src.azureformation.database.models import (
+    AzureLog
+)
+from src.azureformation.log import (
+    log
+)
+from src.azureformation.enum import (
+    ALStatus
+)
 import time
 import os
 import json
 
 # -------------------------------------------------- constants --------------------------------------------------#
+# project name
+AZURE_FORMATION = 'Azure Formation'
 # resource status in program
 READY_ROLE = 'ReadyRole'
 STOPPED_VM = 'StoppedVM'

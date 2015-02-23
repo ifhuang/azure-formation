@@ -1,8 +1,14 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.database import db
-from src.azureformation.log import log
-from datetime import datetime
+from src.azureformation.database import (
+    db
+)
+from src.azureformation.log import (
+    log
+)
+from datetime import (
+    datetime
+)
 import json
 
 
@@ -160,6 +166,7 @@ class AzureLog(DBBase):
     operation = db.Column(db.String(50))
     # ALStatus in enum.py
     status = db.Column(db.String(50))
+    code = db.Column(db.Integer)
     note = db.Column(db.String(500))
     experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
     experiment = db.relationship('Experiment', backref=db.backref('azure_log', lazy='dynamic'))

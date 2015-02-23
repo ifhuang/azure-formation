@@ -1,9 +1,15 @@
 __author__ = 'Yifu Huang'
 
 
-from src.azureformation.azureoperation.utility import NOT_FOUND
-from src.azureformation.log import log
-from azure.servicemanagement import ServiceManagementService
+from src.azureformation.azureoperation.utility import (
+    NOT_FOUND
+)
+from src.azureformation.log import (
+    log
+)
+from azure.servicemanagement import (
+    ServiceManagementService
+)
 
 
 class Service(ServiceManagementService):

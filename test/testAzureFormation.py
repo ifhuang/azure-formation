@@ -1,10 +1,22 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureoperation.service import Service
-from src.azureformation.azureoperation.subscription import Subscription
-from src.azureformation.azureoperation.storageAccount import StorageAccount
-from src.azureformation.azureoperation.cloudService import CloudService
-from src.azureformation.credentials import SUBSCRIPTION_ID, PEM_CERTIFICATE, MANAGEMENT_HOST
+from src.azureformation.azureoperation.service import (
+    Service
+)
+from src.azureformation.azureoperation.subscription import (
+    Subscription
+)
+from src.azureformation.azureoperation.storageAccount import (
+    StorageAccount
+)
+from src.azureformation.azureoperation.cloudService import (
+    CloudService
+)
+from src.azureformation.credentials import (
+    SUBSCRIPTION_ID,
+    PEM_CERTIFICATE,
+    MANAGEMENT_HOST
+)
 import unittest
 
 
