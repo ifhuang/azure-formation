@@ -4,17 +4,11 @@ from src.azureformation.database import (
     db_adapter
 )
 from src.azureformation.database.models import (
-    AzureLog
+    AzureLog,
+    AzureStorageAccount,
+    AzureCloudService,
+    AzureDeployment
 )
-from src.azureformation.log import (
-    log
-)
-from src.azureformation.enum import (
-    ALStatus
-)
-import time
-import os
-import json
 
 # -------------------------------------------------- constants --------------------------------------------------#
 # project name
@@ -25,6 +19,8 @@ STOPPED_VM = 'StoppedVM'
 STOPPED_DEALLOCATED = 'StoppedDeallocated'
 # async wait name
 WAIT_FOR_ASYNC = 'wait for async'
+WAIT_FOR_DEPLOYMENT = 'wait for deployment'
+WAIT_FOR_VIRTUAL_MACHINE = 'wait for virtual machine'
 # async wait constants
 ASYNC_TICK = 30
 ASYNC_LOOP = 60
@@ -39,19 +35,11 @@ SUCCEEDED = 'Succeeded'
 NOT_FOUND = 'Not found (Not Found)'
 # network configuration set type
 NETWORK_CONFIGURATION = 'NetworkConfiguration'
-# -------------------------------------------------- constants --------------------------------------------------#
+
+# -------------------------------------------------- azure log --------------------------------------------------#
 
 
 def commit_azure_log(experiment, operation, status, note=None, code=None):
-    """
-    Commit azure log to database
-    :param experiment:
-    :param operation:
-    :param status:
-    :param code:
-    :param note:
-    :return:
-    """
     db_adapter.add_object_kwargs(AzureLog,
                                  experiment=experiment,
                                  operation=operation,
@@ -61,28 +49,68 @@ def commit_azure_log(experiment, operation, status, note=None, code=None):
     db_adapter.commit()
 
 
-# todo improve async (no sleep)
-def wait_for_async(service, request_id, second_per_loop, loop):
-    """
-    Wait for async operation, up to second_per_loop * loop
-    :param request_id:
-    :return:
-    """
-    count = 0
-    result = service.get_operation_status(request_id)
-    while result.status == IN_PROGRESS:
-        log.debug('%s [%s] loop count [%d]' % (WAIT_FOR_ASYNC, request_id, count))
-        count += 1
-        if count > loop:
-            log.error('Timed out waiting for async operation to complete.')
-            return False
-        time.sleep(second_per_loop)
-        result = service.get_operation_status(request_id)
-    if result.status != SUCCEEDED:
-        log.error(vars(result))
-        if result.error:
-            log.error(result.error.code)
-            log.error(vars(result.error))
-        log.error('Asynchronous operation did not succeed.')
-        return False
-    return True
+# --------------------------------------------- azure storage account ---------------------------------------------#
+
+
+def commit_azure_storage_account(name, description, label, location, status, experiment):
+    db_adapter.add_object_kwargs(AzureStorageAccount,
+                                 name=name,
+                                 description=description,
+                                 label=label,
+                                 location=location,
+                                 status=status,
+                                 experiment=experiment)
+    db_adapter.commit()
+
+
+def contain_azure_storage_account(name):
+    return db_adapter.count(AzureStorageAccount, name=name) != 0
+
+
+def delete_azure_storage_account(name):
+    db_adapter.delete_all_objects(AzureStorageAccount, name=name)
+    db_adapter.commit()
+
+
+# --------------------------------------------- azure cloud service ---------------------------------------------#
+
+
+def commit_azure_cloud_service(name, label, location, status, experiment):
+    db_adapter.add_object_kwargs(AzureCloudService,
+                                 name=name,
+                                 label=label,
+                                 location=location,
+                                 status=status,
+                                 experiment=experiment)
+    db_adapter.commit()
+
+
+def contain_azure_cloud_service(name):
+    return db_adapter.count(AzureCloudService, name=name) != 0
+
+
+def delete_azure_cloud_service(name):
+    db_adapter.delete_all_objects(AzureCloudService, name=name)
+    db_adapter.commit()
+
+
+# --------------------------------------------- azure deployment ---------------------------------------------#
+
+
+def delete_azure_deployment(cloud_service_name, deployment_slot):
+    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
+    db_adapter.delete_all_objects(AzureDeployment,
+                                  slot=deployment_slot,
+                                  cloud_service_id=cs.id)
+    db_adapter.commit()
+
+
+def commit_azure_deployment(name, slot, status, cloud_service_name, experiment):
+    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
+    db_adapter.add_object_kwargs(AzureDeployment,
+                                 name=name,
+                                 slot=slot,
+                                 status=status,
+                                 cloud_service=cs,
+                                 experiment=experiment)
+    db_adapter.commit()

@@ -93,16 +93,37 @@ class Template:
         network_config = ConfigurationSet()
         network_config.configuration_set_type = nc[T_NC_CST]
         input_endpoints = nc[T_NC_IE]
-        assigned_ports = service.get_assigned_endpoints(cs[T_CS_SN])
+        assigned_endpoints = service.get_assigned_endpoints(cs[T_CS_SN])
         for input_endpoint in input_endpoints:
             port = int(input_endpoint[T_NC_IE_LP])
             # avoid duplicate endpoint under same cloud service
-            while str(port) in assigned_ports:
+            while str(port) in assigned_endpoints:
                 port = (port + 1) % 65536
-            assigned_ports.append(str(port))
+            assigned_endpoints.append(str(port))
             network_config.input_endpoints.input_endpoints.append(
-                ConfigurationSetInputEndpoint(input_endpoint[T_NC_IE_N],
-                                              input_endpoint[T_NC_IE_PR],
-                                              str(port),
-                                              input_endpoint[T_NC_IE_LP]))
+                ConfigurationSetInputEndpoint(
+                    input_endpoint[T_NC_IE_N],
+                    input_endpoint[T_NC_IE_PR],
+                    str(port),
+                    input_endpoint[T_NC_IE_LP]
+                )
+            )
+        return network_config
 
+    def get_cloud_service_name(self):
+        return self.virtual_environment[T_CS][T_CS_SN]
+
+    def get_deployment_slot(self):
+        return self.virtual_environment[T_D][T_D_DS]
+
+    def get_deployment_name(self):
+        return self.virtual_environment[T_D][T_D_DN]
+
+    def get_virtual_machine_name(self):
+        return self.virtual_environment[T_RN]
+
+    def get_virtual_machine_label(self):
+        return self.virtual_environment[T_L]
+
+    def get_virtual_machine_size(self):
+        return self.virtual_environment[T_RS]

@@ -278,7 +278,7 @@ class AzureVirtualMachine(DBBase):
             self.last_modify_time = datetime.utcnow()
 
 
-class AzureEndPoint(DBBase):
+class AzureEndpoint(DBBase):
     """
     Input endpoint information of Azure virtual machine
     """
@@ -288,12 +288,12 @@ class AzureEndPoint(DBBase):
     public_port = db.Column(db.Integer)
     private_port = db.Column(db.Integer)
     virtual_machine_id = db.Column(db.Integer, db.ForeignKey('azure_virtual_machine.id', ondelete='CASCADE'))
-    virtual_machine = db.relationship('AzureVirtualMachine', backref=db.backref('azure_end_point', lazy='dynamic'))
+    virtual_machine = db.relationship('AzureVirtualMachine', backref=db.backref('azure_endpoint', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
     def __init__(self, **kwargs):
-        super(AzureEndPoint, self).__init__(**kwargs)
+        super(AzureEndpoint, self).__init__(**kwargs)
         if self.create_time is None:
             self.create_time = datetime.utcnow()
         if self.last_modify_time is None:

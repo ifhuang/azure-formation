@@ -8,16 +8,12 @@ from src.azureformation.azureoperation.utility import (
     ASYNC_TICK,
     ASYNC_LOOP,
     commit_azure_log,
-    wait_for_async
+    commit_azure_storage_account,
+    contain_azure_storage_account,
+    delete_azure_storage_account
 )
 from src.azureformation.log import (
     log
-)
-from src.azureformation.database import (
-    db_adapter
-)
-from src.azureformation.database.models import (
-    AzureStorageAccount
 )
 from src.azureformation.enum import (
     ALOperation,
@@ -71,8 +67,7 @@ class StorageAccount:
                 log.error(m)
                 return False
             # delete old info in database
-            db_adapter.delete_all_objects(AzureStorageAccount, name=name)
-            db_adapter.commit()
+            delete_azure_storage_account(name)
             try:
                 result = self.service.create_storage_account(name,
                                                              description,
@@ -84,7 +79,7 @@ class StorageAccount:
                 log.error(e)
                 return False
             # make sure async operation succeed
-            if not wait_for_async(self.service, result.request_id, ASYNC_TICK, ASYNC_LOOP):
+            if not self.service.wait_for_async(self.service, result.request_id, ASYNC_TICK, ASYNC_LOOP):
                 m = create_storage_account_error[3] % (STORAGE_ACCOUNT, name)
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 3)
                 log.error(m)
@@ -97,32 +92,18 @@ class StorageAccount:
                 return False
             else:
                 m = create_storage_account_info[0] % (STORAGE_ACCOUNT, name)
-                db_adapter.add_object_kwargs(AzureStorageAccount,
-                                             name=name,
-                                             description=description,
-                                             location=location,
-                                             label=label,
-                                             status=ASAStatus.ONLINE,
-                                             experiment=experiment)
-                db_adapter.commit()
+                commit_azure_storage_account(name, description, label, location, ASAStatus.ONLINE, experiment)
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 0)
                 log.debug(m)
         else:
             # check whether storage account created by azure formation before
-            if db_adapter.count(AzureStorageAccount, name=name) == 0:
-                m = create_storage_account_info[1] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
-                db_adapter.add_object_kwargs(AzureStorageAccount,
-                                             name=name,
-                                             description=description,
-                                             label=label,
-                                             location=location,
-                                             status=ASAStatus.ONLINE,
-                                             experiment=experiment)
-                db_adapter.commit()
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 1)
-            else:
+            if contain_azure_storage_account(name):
                 m = create_storage_account_info[2] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 2)
+            else:
+                m = create_storage_account_info[1] % (STORAGE_ACCOUNT, name, AZURE_FORMATION)
+                commit_azure_storage_account(name, description, label, location, ASAStatus.ONLINE, experiment)
+                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 1)
             log.debug(m)
         return True
 
