@@ -8,6 +8,8 @@ from src.azureformation.azureoperation.utility import (
     ASYNC_LOOP,
     DEPLOYMENT_TICK,
     DEPLOYMENT_LOOP,
+    VIRTUAL_MACHINE_TICK,
+    VIRTUAL_MACHINE_LOOP,
     commit_azure_log,
     delete_azure_deployment,
     commit_azure_deployment
@@ -34,7 +36,8 @@ create_deployment_info = [
 ]
 create_virtual_machine_error = [
     '%s [%s] %s',
-    '%s [%s] wait for async fail'
+    '%s [%s] wait for async fail',
+    '%s [%s] wait for virtual machine fail'
 ]
 create_virtual_machine_info = [
 
@@ -199,17 +202,17 @@ class VirtualMachine:
                                         experiment)
                 commit_azure_log(experiment, ALOperation.CREATE_DEPLOYMENT, ALStatus.END)
             # make sure role is ready
-            if not self.wait_for_role(cloud_service['service_name'],
-                                      deployment['deployment_name'],
-                                      virtual_machine['role_name'],
-                                      VIRTUAL_MACHINE_TICK,
-                                      VIRTUAL_MACHINE_LOOP):
-                m = '%s %s created but not ready' % (VIRTUAL_MACHINE, virtual_machine['role_name'])
-                user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
-                vm_endpoint_rollback(cs)
+            if not self.service.wait_for_virtual_machine(cloud_service_name,
+                                                         deployment_name,
+                                                         virtual_machine_name,
+                                                         VIRTUAL_MACHINE_TICK,
+                                                         VIRTUAL_MACHINE_LOOP):
+                m = create_virtual_machine_error[2] % (VIRTUAL_MACHINE, virtual_machine_name)
+                commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 2)
                 log.error(m)
                 return False
             else:
+
                 user_resource_commit(self.user_template,
                                      VIRTUAL_MACHINE,
                                      virtual_machine['role_name'],
@@ -225,7 +228,7 @@ class VirtualMachine:
 
     # --------------------------------------------helper function-------------------------------------------- #
 
-    def __vm_info_helper(self, cs, cs_name, dm_name, vm_name):
+    def __vm_info_helper(self, cs, cs_name, dm_name, vm_name, remote_provider, gc, network_config):
         """
         Help to complete vm info
         :param cs:
@@ -240,9 +243,38 @@ class VirtualMachine:
                                           type=VIRTUAL_MACHINE,
                                           name=vm_name,
                                           cloud_service_id=cs.id)
-        vm_endpoint_update(cs, vm)
+        gc['name'] = vm.name
+        network = ConfigurationSet()
+        network.configuration_set_type = network_config['configuration_set_type']
+        input_endpoints = network_config['input_endpoints']
+        assigned_ports = self.__get_assigned_ports(cs_name)
+        for input_endpoint in input_endpoints:
+            port = int(input_endpoint['local_port'])
+            # avoid duplicate vm endpoint under same cloud service
+            while str(port) in assigned_ports:
+                port = (port + 1) % 65536
+            assigned_ports.append(str(port))
+            vm_endpoint_commit(input_endpoint['name'],
+                               input_endpoint['protocol'],
+                               port,
+                               input_endpoint['local_port'],
+                               cs,
+                               vm)
+            network.input_endpoints.input_endpoints.append(
+                ConfigurationSetInputEndpoint(input_endpoint['name'],
+                                              input_endpoint['protocol'],
+                                              str(port),
+                                              input_endpoint['local_port']))
+            if gc['displayname'] == input_endpoint['name']:
+                gc['port'] = port
+        result = self.sms.update_role(cs_name,
+                                      dm_name,
+                                      vm_name,
+                                      network_config=network)
+        wait_for_async(self.sms, result.request_id, ASYNC_TICK, ASYNC_LOOP)
+        self.wait_for_role(cs_name, dm_name, vm_name, VIRTUAL_MACHINE_TICK, VIRTUAL_MACHINE_LOOP)
         # commit vm config
-        deploy = self.service.get_deployment_by_name(cs_name, dm_name)
+        deploy = self.sms.get_deployment_by_name(cs_name, dm_name)
         for role in deploy.role_instance_list:
             # to get private ip
             if role.role_name == vm_name:
@@ -250,5 +282,12 @@ class VirtualMachine:
                 # to get public ip
                 if role.instance_endpoints is not None:
                     public_ip = role.instance_endpoints.instance_endpoints[0].vip
-                vm_config_commit(vm, deploy.url, public_ip, role.ip_address)
+                    gc['hostname'] = public_ip
+                vm_config_commit(vm,
+                                 deploy.url,
+                                 public_ip,
+                                 role.ip_address,
+                                 remote_provider,
+                                 json.dumps(gc),
+                                 self.user_template)
                 break

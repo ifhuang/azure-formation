@@ -7,7 +7,8 @@ from src.azureformation.database.models import (
     AzureLog,
     AzureStorageAccount,
     AzureCloudService,
-    AzureDeployment
+    AzureDeployment,
+    AzureVirtualMachine
 )
 
 # -------------------------------------------------- constants --------------------------------------------------#
@@ -114,3 +115,10 @@ def commit_azure_deployment(name, slot, status, cloud_service_name, experiment):
                                  cloud_service=cs,
                                  experiment=experiment)
     db_adapter.commit()
+
+
+# --------------------------------------------- azure virtual machine ---------------------------------------------#
+
+
+def commit_azure_virtual_machine():
+    pass

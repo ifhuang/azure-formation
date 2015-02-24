@@ -189,6 +189,12 @@ class Service(ServiceManagementService):
             props = self.get_deployment_by_name(service_name, deployment_name)
         return self.get_virtual_machine_instance_status(props, role_instance_name) == status
 
+    def update_role(self, cloud_service_name, deployment_name, virtual_machine_name, network_config):
+        return super(Service, self).update_role(cloud_service_name,
+                                                deployment_name,
+                                                virtual_machine_name,
+                                                network_config=network_config)
+
     def get_role(self, service_name, deployment_name, role_name):
         return super(Service, self).get_role(service_name, deployment_name, role_name)
 
