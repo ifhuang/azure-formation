@@ -2,7 +2,8 @@ __author__ = 'Yifu Huang'
 
 
 from src.azureformation.azureoperation.utility import (
-    NOT_FOUND
+    NOT_FOUND,
+    NETWORK_CONFIGURATION
 )
 from src.azureformation.log import (
     log
@@ -52,8 +53,8 @@ class Service(ServiceManagementService):
 
     # ---------------------------------------- cloud service ---------------------------------------- #
 
-    def get_hosted_service_properties(self, name):
-        return super(Service, self).get_hosted_service_properties(name)
+    def get_hosted_service_properties(self, name, detail=False):
+        return super(Service, self).get_hosted_service_properties(name, detail)
 
     def cloud_service_exists(self, name):
         """
@@ -115,6 +116,20 @@ class Service(ServiceManagementService):
                 log.error(e)
             return False
         return props is not None
+
+    # ---------------------------------------- endpoint ---------------------------------------- #
+
+    def get_assigned_endpoints(self, cloud_service_name):
+        properties = self.get_hosted_service_properties(cloud_service_name, True)
+        endpoints = []
+        for deployment in properties.deployments.deployments:
+            for role in deployment.role_list.roles:
+                for configuration_set in role.configuration_sets.configuration_sets:
+                    if configuration_set.configuration_set_type == NETWORK_CONFIGURATION:
+                        if configuration_set.input_endpoints is not None:
+                            for input_endpoint in configuration_set.input_endpoints.input_endpoints:
+                                endpoints.append(input_endpoint.port)
+        return endpoints
 
     # ---------------------------------------- other ---------------------------------------- #
 

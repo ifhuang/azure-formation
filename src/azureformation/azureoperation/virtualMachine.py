@@ -4,10 +4,6 @@ from src.azureformation.azureoperation.subscription import (
     Subscription
 )
 from src.azureformation.azureoperation.utility import (
-    T_STORAGE_ACCOUNT,
-    T_CONTAINER,
-    T_CLOUD_SERVICE,
-    T_DEPLOYMENT,
     commit_azure_log
 )
 from src.azureformation.database import (
@@ -22,7 +18,6 @@ from src.azureformation.enum import (
     ALOperation,
     ALStatus
 )
-import datetime
 
 
 class VirtualMachine:
@@ -34,7 +29,7 @@ class VirtualMachine:
         self.service = service
         self.subscription = Subscription(service)
 
-    def create_virtual_machine(self, template_config, experiment):
+    def create_virtual_machine(self, template, experiment):
         """
         1. If deployment not exist in azure subscription, then create virtual machine with deployment
            Else reuse deployment in azure subscription
@@ -42,54 +37,11 @@ class VirtualMachine:
            Else reuse virtual machine in azure subscription
         :return:
         """
-        commit_azure_log(self.user_template, CREATE_DEPLOYMENT, START)
-        commit_azure_log(self.user_template, CREATE_VIRTUAL_MACHINE, START)
-        storage_account = template_config[T_STORAGE_ACCOUNT]
-        container = template_config[T_CONTAINER]
-        cloud_service = template_config[T_CLOUD_SERVICE]
-        deployment = template_config[T_DEPLOYMENT]
-        cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service['service_name'])
-        system_config = virtual_machine['system_config']
-        # check whether virtual machine is Windows or Linux
-        if system_config['os_family'] == WINDOWS:
-            config = WindowsConfigurationSet(computer_name=system_config['host_name'],
-                                             admin_password=system_config['user_password'],
-                                             admin_username=system_config['user_name'])
-            config.domain_join = None
-            config.win_rm = None
-        else:
-            config = LinuxConfigurationSet(system_config['host_name'],
-                                           system_config['user_name'],
-                                           system_config['user_password'],
-                                           False)
-        now = datetime.datetime.now()
-        blob = '%s-%s-%s-%s-%s-%s-%s.vhd' % (virtual_machine['source_image_name'],
-                                             str(now.year), str(now.month), str(now.day),
-                                             str(now.hour), str(now.minute), str(now.second))
-        media_link = 'https://%s.%s/%s/%s' % (storage_account['service_name'],
-                                              storage_account['url_base'],
-                                              container,
-                                              blob)
-        os_hd = OSVirtualHardDisk(virtual_machine['source_image_name'], media_link)
-        network_config = virtual_machine['network_config']
-        network = ConfigurationSet()
-        network.configuration_set_type = network_config['configuration_set_type']
-        input_endpoints = network_config['input_endpoints']
-        for input_endpoint in input_endpoints:
-            port = int(input_endpoint['local_port'])
-            # avoid duplicate vm endpoint under same cloud service
-            while db_adapter.count(VMEndpoint, cloud_service_id=cs.id, public_port=port) > 0:
-                port = (port + 1) % 65536
-            vm_endpoint_commit(input_endpoint['name'],
-                               input_endpoint['protocol'],
-                               port,
-                               input_endpoint['local_port'],
-                               cs)
-            network.input_endpoints.input_endpoints.append(
-                ConfigurationSetInputEndpoint(input_endpoint['name'],
-                                              input_endpoint['protocol'],
-                                              port,
-                                              input_endpoint['local_port']))
+        commit_azure_log(experiment, ALOperation.CREATE_DEPLOYMENT, ALStatus.START)
+        commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.START)
+        system_config = template.get_system_config()
+        os_virtual_hard_disk = template.get_os_virtual_hard_disk()
+        network_config = template.get_network_config()
         # avoid duplicate deployment
         if self.service.deployment_exists(cloud_service['service_name'], deployment['deployment_name']):
             if db_adapter.count(UserResource,
