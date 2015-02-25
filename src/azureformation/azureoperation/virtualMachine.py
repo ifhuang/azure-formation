@@ -10,9 +10,15 @@ from src.azureformation.azureoperation.utility import (
     DEPLOYMENT_LOOP,
     VIRTUAL_MACHINE_TICK,
     VIRTUAL_MACHINE_LOOP,
+    AZURE_FORMATION,
     commit_azure_log,
     delete_azure_deployment,
-    commit_azure_deployment
+    commit_azure_deployment,
+    commit_azure_virtual_machine,
+    commit_virtual_environment,
+    contain_azure_deployment,
+    contain_azure_virtual_machine,
+    delete_azure_virtual_machine
 )
 from src.azureformation.enum import (
     ALOperation,
@@ -20,7 +26,10 @@ from src.azureformation.enum import (
     DEPLOYMENT,
     VIRTUAL_MACHINE,
     ADStatus,
-    AVMStatus
+    AVMStatus,
+    VEProvider,
+    VERemoteProvider,
+    VEStatus
 )
 from src.azureformation.log import (
     log
@@ -32,15 +41,21 @@ create_deployment_error = [
     '%s [%s] wait for deployment fail'
 ]
 create_deployment_info = [
-
+    '%s [%s] created',
+    '%s [%s] exist but not created by %s before',
+    '%s [%s] exist and created by %s before'
 ]
 create_virtual_machine_error = [
     '%s [%s] %s',
     '%s [%s] wait for async fail',
-    '%s [%s] wait for virtual machine fail'
+    '%s [%s] wait for virtual machine fail',
+    '%s [%s] wait for async fail (update network config)',
+    '%s [%s] wait for virtual machine fail (update network config)',
+    '%s [%s] exist but not created by %s before'
 ]
 create_virtual_machine_info = [
-
+    '%s [%s] created',
+    '%s [%s] exist and created by %s before'
 ]
 
 
@@ -65,96 +80,103 @@ class VirtualMachine:
         commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.START)
         cloud_service_name = template.get_cloud_service_name()
         deployment_slot = template.get_deployment_slot()
-        virtual_machine_name = template.get_virtual_machine_name()
+        virtual_machine_name = '%s-%d' % (template.get_virtual_machine_name(), experiment.id)
         virtual_machine_label = template.get_virtual_machine_label()
         virtual_machine_size = template.get_virtual_machine_size()
         system_config = template.get_system_config()
         os_virtual_hard_disk = template.get_os_virtual_hard_disk()
         network_config = template.get_network_config()
+        image_type = template.get_image_type()
+        image_name = template.get_image_name()
         # avoid duplicate deployment in azure subscription
         if self.service.deployment_exists(cloud_service_name, deployment_slot):
-            if db_adapter.count(UserResource,
-                                type=DEPLOYMENT,
-                                name=deployment['deployment_name'],
-                                cloud_service_id=cs.id) == 0:
-                m = '%s %s exist but not created by this function before' % \
-                    (DEPLOYMENT, deployment['deployment_name'])
-                user_resource_commit(self.user_template, DEPLOYMENT, deployment['deployment_name'], RUNNING, cs.id)
+            deployment_name = self.service.get_deployment_name(cloud_service_name, deployment_slot)
+            if contain_azure_deployment(cloud_service_name, deployment_slot):
+                m = create_deployment_info[0] % (DEPLOYMENT, deployment_name, AZURE_FORMATION)
+                commit_azure_log(experiment, ALOperation.CREATE_DEPLOYMENT, ALStatus.END, m, 2)
             else:
-                m = '%s %s exist and created by this function before' % \
-                    (DEPLOYMENT, deployment['deployment_name'])
-            user_operation_commit(self.user_template, CREATE_DEPLOYMENT, END, m)
+                m = create_deployment_info[1] % (DEPLOYMENT, deployment_name, AZURE_FORMATION)
+                commit_azure_deployment(deployment_name,
+                                        deployment_slot,
+                                        ADStatus.RUNNING,
+                                        cloud_service_name,
+                                        experiment)
+                commit_azure_log(experiment, ALOperation.CREATE_DEPLOYMENT, ALStatus.END, m, 1)
             log.debug(m)
-            # avoid duplicate role
-            if self.service.role_exists(cloud_service['service_name'],
-                                        deployment['deployment_name'],
-                                        virtual_machine['role_name']):
-                if db_adapter.count(UserResource,
-                                    user_template_id=self.user_template.id,
-                                    type=VIRTUAL_MACHINE,
-                                    name=virtual_machine['role_name'],
-                                    cloud_service_id=cs.id) == 0:
-                    m = '%s %s exist but not created by this user template before' % \
-                        (VIRTUAL_MACHINE, virtual_machine['role_name'])
-                    user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
-                    vm_endpoint_rollback(cs)
+            # avoid duplicate role in azure subscription
+            if self.service.role_exists(cloud_service_name, deployment_name, virtual_machine_name):
+                if contain_azure_virtual_machine(cloud_service_name, deployment_name, virtual_machine_name):
+                    m = create_virtual_machine_info[1] % (VIRTUAL_MACHINE, virtual_machine_name, AZURE_FORMATION)
+                    commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.END, m, 1)
+                    log.debug(m)
+                else:
+                    m = create_virtual_machine_error[5] % (VIRTUAL_MACHINE, virtual_machine_name, AZURE_FORMATION)
+                    commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 5)
                     log.error(m)
                     return False
-                else:
-                    m = '%s %s exist and created by this user template before' % \
-                        (VIRTUAL_MACHINE, virtual_machine['role_name'])
-                    user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, END, m)
-                    vm_endpoint_rollback(cs)
-                    log.debug(m)
             else:
-                # delete old virtual machine info in database, cascade delete old vm endpoint and old vm config
-                db_adapter.delete_all_objects(UserResource,
-                                              type=VIRTUAL_MACHINE,
-                                              name=virtual_machine['role_name'],
-                                              cloud_service_id=cs.id)
-                db_adapter.commit()
+                # delete old azure virtual machine, cascade delete old azure endpoint
+                delete_azure_virtual_machine(cloud_service_name, deployment_name, virtual_machine_name)
                 try:
-                    result = self.service.add_role(cloud_service['service_name'],
-                                                   deployment['deployment_name'],
-                                                   virtual_machine['role_name'],
-                                                   config,
-                                                   os_hd,
-                                                   network_config=network,
-                                                   role_size=virtual_machine['role_size'])
+                    result = self.service.add_role(cloud_service_name,
+                                                   deployment_name,
+                                                   virtual_machine_name,
+                                                   system_config,
+                                                   os_virtual_hard_disk,
+                                                   network_config,
+                                                   image_name,
+                                                   virtual_machine_size)
                 except Exception as e:
-                    user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, e.message)
-                    vm_endpoint_rollback(cs)
+                    m = create_virtual_machine_error[0] % (VIRTUAL_MACHINE, virtual_machine_name, e.message)
+                    commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, e.message, 0)
                     log.error(e)
                     return False
                 # make sure async operation succeeds
-                if not wait_for_async(self.service, result.request_id, ASYNC_TICK, ASYNC_LOOP):
-                    m = WAIT_FOR_ASYNC + ' ' + FAIL
-                    user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
-                    vm_endpoint_rollback(cs)
+                if not self.service.wait_for_async(result.request_id, ASYNC_TICK, ASYNC_LOOP):
+                    m = create_virtual_machine_error[1] % (VIRTUAL_MACHINE, virtual_machine_name)
+                    commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 1)
                     log.error(m)
                     return False
                 # make sure role is ready
-                if not self.wait_for_role(cloud_service['service_name'],
-                                          deployment['deployment_name'],
-                                          virtual_machine['role_name'],
-                                          VIRTUAL_MACHINE_TICK,
-                                          VIRTUAL_MACHINE_LOOP):
-                    m = '%s %s created but not ready' % (VIRTUAL_MACHINE, virtual_machine['role_name'])
-                    user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, FAIL, m)
-                    vm_endpoint_rollback(cs)
+                if not self.service.wait_for_role(cloud_service_name,
+                                                  deployment_name,
+                                                  virtual_machine_name,
+                                                  VIRTUAL_MACHINE_TICK,
+                                                  VIRTUAL_MACHINE_LOOP):
+                    m = create_virtual_machine_error[2] % (VIRTUAL_MACHINE, virtual_machine_name)
+                    commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 2)
                     log.error(m)
                     return False
                 else:
-                    user_resource_commit(self.user_template,
-                                         VIRTUAL_MACHINE,
-                                         virtual_machine['role_name'],
-                                         RUNNING,
-                                         cs.id)
-                    user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, END)
-                    self.__vm_info_helper(cs,
-                                          cloud_service['service_name'],
-                                          deployment['deployment_name'],
-                                          virtual_machine['role_name'])
+                    dns = self.service.get_deployment_dns(cloud_service_name, deployment_slot)
+                    public_ip = self.service.get_virtual_machine_public_ip(cloud_service_name,
+                                                                           deployment_name,
+                                                                           virtual_machine_name)
+                    private_ip = self.service.get_virtual_machine_private_ip(cloud_service_name,
+                                                                             deployment_name,
+                                                                             virtual_machine_name)
+                    commit_azure_virtual_machine(virtual_machine_name,
+                                                 virtual_machine_label,
+                                                 AVMStatus.RUNNING,
+                                                 dns,
+                                                 public_ip,
+                                                 private_ip,
+                                                 cloud_service_name,
+                                                 deployment_name,
+                                                 experiment)
+                    remote_port_name = template.get_remote_port_name()
+                    remote_port = self.service.get_public_endpoint(remote_port_name)
+                    remote_paras = template.get_remote_paras(virtual_machine_name,
+                                                             public_ip,
+                                                             remote_port)
+                    commit_virtual_environment(VEProvider.AzureVM,
+                                               template.get_remote_provider_name(),
+                                               None,
+                                               VEStatus.Running,
+                                               VERemoteProvider.Guacamole,
+                                               remote_paras,
+                                               experiment)
+                    commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.END)
         else:
             # delete old azure deployment, cascade delete old azure virtual machine and azure endpoint
             delete_azure_deployment(cloud_service_name, deployment_slot)
@@ -212,82 +234,59 @@ class VirtualMachine:
                 log.error(m)
                 return False
             else:
-
-                user_resource_commit(self.user_template,
-                                     VIRTUAL_MACHINE,
-                                     virtual_machine['role_name'],
-                                     RUNNING,
-                                     cs.id)
-                user_operation_commit(self.user_template, CREATE_VIRTUAL_MACHINE, END)
-                self.__vm_info_helper(cs,
-                                      cloud_service['service_name'],
-                                      deployment['deployment_name'],
-                                      virtual_machine['role_name'])
-
+                result = self.service.update_role(cloud_service_name,
+                                                  deployment_name,
+                                                  virtual_machine_name,
+                                                  network_config)
+                if not self.service.wait_for_async(result.request_id, ASYNC_TICK, ASYNC_LOOP):
+                    m = create_virtual_machine_error[3] % (VIRTUAL_MACHINE, virtual_machine_name)
+                    commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 3)
+                    log.error(m)
+                    return False
+                if not self.service.wait_for_virtual_machine(cloud_service_name,
+                                                             deployment_name,
+                                                             virtual_machine_name,
+                                                             VIRTUAL_MACHINE_TICK,
+                                                             VIRTUAL_MACHINE_LOOP):
+                    m = create_virtual_machine_error[4] % (VIRTUAL_MACHINE, virtual_machine_name)
+                    commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 4)
+                    log.error(m)
+                    return False
+                dns = self.service.get_deployment_dns(cloud_service_name, deployment_slot)
+                public_ip = self.service.get_virtual_machine_public_ip(cloud_service_name,
+                                                                       deployment_name,
+                                                                       virtual_machine_name)
+                private_ip = self.service.get_virtual_machine_private_ip(cloud_service_name,
+                                                                         deployment_name,
+                                                                         virtual_machine_name)
+                commit_azure_virtual_machine(virtual_machine_name,
+                                             virtual_machine_label,
+                                             AVMStatus.RUNNING,
+                                             dns,
+                                             public_ip,
+                                             private_ip,
+                                             cloud_service_name,
+                                             deployment_name,
+                                             experiment)
+                remote_port_name = template.get_remote_port_name()
+                remote_port = self.service.get_public_endpoint(remote_port_name)
+                remote_paras = template.get_remote_paras(virtual_machine_name,
+                                                         public_ip,
+                                                         remote_port)
+                commit_virtual_environment(VEProvider.AzureVM,
+                                           template.get_remote_provider_name(),
+                                           None,
+                                           VEStatus.Running,
+                                           VERemoteProvider.Guacamole,
+                                           remote_paras,
+                                           experiment)
+                commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.END)
         return True
 
-    # --------------------------------------------helper function-------------------------------------------- #
+    # todo update virtual machine
+    def update_virtual_machine(self):
+        raise NotImplementedError
 
-    def __vm_info_helper(self, cs, cs_name, dm_name, vm_name, remote_provider, gc, network_config):
-        """
-        Help to complete vm info
-        :param cs:
-        :param cs_name:
-        :param dm_name:
-        :param vm_name:
-        :return:
-        """
-        # associate vm endpoint with specific vm
-        vm = db_adapter.find_first_object(UserResource,
-                                          user_template=self.user_template,
-                                          type=VIRTUAL_MACHINE,
-                                          name=vm_name,
-                                          cloud_service_id=cs.id)
-        gc['name'] = vm.name
-        network = ConfigurationSet()
-        network.configuration_set_type = network_config['configuration_set_type']
-        input_endpoints = network_config['input_endpoints']
-        assigned_ports = self.__get_assigned_ports(cs_name)
-        for input_endpoint in input_endpoints:
-            port = int(input_endpoint['local_port'])
-            # avoid duplicate vm endpoint under same cloud service
-            while str(port) in assigned_ports:
-                port = (port + 1) % 65536
-            assigned_ports.append(str(port))
-            vm_endpoint_commit(input_endpoint['name'],
-                               input_endpoint['protocol'],
-                               port,
-                               input_endpoint['local_port'],
-                               cs,
-                               vm)
-            network.input_endpoints.input_endpoints.append(
-                ConfigurationSetInputEndpoint(input_endpoint['name'],
-                                              input_endpoint['protocol'],
-                                              str(port),
-                                              input_endpoint['local_port']))
-            if gc['displayname'] == input_endpoint['name']:
-                gc['port'] = port
-        result = self.sms.update_role(cs_name,
-                                      dm_name,
-                                      vm_name,
-                                      network_config=network)
-        wait_for_async(self.sms, result.request_id, ASYNC_TICK, ASYNC_LOOP)
-        self.wait_for_role(cs_name, dm_name, vm_name, VIRTUAL_MACHINE_TICK, VIRTUAL_MACHINE_LOOP)
-        # commit vm config
-        deploy = self.sms.get_deployment_by_name(cs_name, dm_name)
-        for role in deploy.role_instance_list:
-            # to get private ip
-            if role.role_name == vm_name:
-                public_ip = None
-                # to get public ip
-                if role.instance_endpoints is not None:
-                    public_ip = role.instance_endpoints.instance_endpoints[0].vip
-                    gc['hostname'] = public_ip
-                vm_config_commit(vm,
-                                 deploy.url,
-                                 public_ip,
-                                 role.ip_address,
-                                 remote_provider,
-                                 json.dumps(gc),
-                                 self.user_template)
-                break
+    # todo delete virtual machine
+    def delete_virtual_machine(self):
+        raise NotImplementedError

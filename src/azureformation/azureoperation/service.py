@@ -138,6 +138,14 @@ class Service(ServiceManagementService):
             props = self.get_deployment_by_name(service_name, deployment_name)
         return props.status == status
 
+    def get_deployment_dns(self, service_name, deployment_slot):
+        try:
+            props = self.get_deployment_by_slot(service_name, deployment_slot)
+        except Exception as e:
+            log.error(e)
+            return None
+        return props.url
+
     # ---------------------------------------- virtual machine ---------------------------------------- #
 
     def create_virtual_machine_deployment(self, cloud_service_name, deployment_name, deployment_slot,
@@ -165,35 +173,40 @@ class Service(ServiceManagementService):
                 return role_instance.instance_status
         return None
 
-    def wait_for_virtual_machine(self, service_name, deployment_name, role_instance_name,
+    def wait_for_virtual_machine(self, cloud_service_name, deployment_name, virtual_machine_name,
                                  second_per_loop, loop, status=READY_ROLE):
-        """
-        Wait virtual machine until ready, up to second_per_loop * loop
-        :param service_name:
-        :param deployment_name:
-        :param role_instance_name:
-        :param second_per_loop:
-        :param loop:
-        :param status:
-        :return:
-        """
         count = 0
         props = self.get_deployment_by_name(service_name, deployment_name)
-        while self.get_virtual_machine_instance_status(props, role_instance_name) != status:
-            log.debug('%s [%s] loop count: %d' % (WAIT_FOR_VIRTUAL_MACHINE, role_instance_name, count))
+        while self.get_virtual_machine_instance_status(props, virtual_machine_name) != status:
+            log.debug('%s [%s] loop count: %d' % (WAIT_FOR_VIRTUAL_MACHINE, virtual_machine_name, count))
             count += 1
             if count > loop:
                 log.error('Timed out waiting for role instance status.')
                 return False
             time.sleep(second_per_loop)
             props = self.get_deployment_by_name(service_name, deployment_name)
-        return self.get_virtual_machine_instance_status(props, role_instance_name) == status
+        return self.get_virtual_machine_instance_status(props, virtual_machine_name) == status
 
     def update_role(self, cloud_service_name, deployment_name, virtual_machine_name, network_config):
         return super(Service, self).update_role(cloud_service_name,
                                                 deployment_name,
                                                 virtual_machine_name,
                                                 network_config=network_config)
+
+    def get_virtual_machine_public_ip(self, cloud_service_name, deployment_name, virtual_machine_name):
+        deployment = self.get_deployment_by_name(cloud_service_name, deployment_name)
+        for role in deployment.role_instance_list:
+            if role.role_name == virtual_machine_name:
+                if role.instance_endpoints is not None:
+                    return role.instance_endpoints.instance_endpoints[0].vip
+        return None
+
+    def get_virtual_machine_private_ip(self, cloud_service_name, deployment_name, virtual_machine_name):
+        deployment = self.get_deployment_by_name(cloud_service_name, deployment_name)
+        for role in deployment.role_instance_list:
+            if role.role_name == virtual_machine_name:
+                return role.ip_address
+        return None
 
     def get_role(self, service_name, deployment_name, role_name):
         return super(Service, self).get_role(service_name, deployment_name, role_name)
@@ -214,6 +227,13 @@ class Service(ServiceManagementService):
             return False
         return props is not None
 
+    def add_role(self, cloud_service_name, deployment_name, virtual_machine_name,
+                 system_config, os_virtual_hard_disk, network_config,
+                 vm_image_name, role_size):
+        return super(Service, self).add_role(cloud_service_name, deployment_name, virtual_machine_name,
+                                             system_config, os_virtual_hard_disk, network_config,
+                                             vm_image_name, role_size)
+
     # ---------------------------------------- endpoint ---------------------------------------- #
 
     def get_assigned_endpoints(self, cloud_service_name):
@@ -227,6 +247,19 @@ class Service(ServiceManagementService):
                             for input_endpoint in configuration_set.input_endpoints.input_endpoints:
                                 endpoints.append(input_endpoint.port)
         return endpoints
+
+    def get_public_endpoint(self, cloud_service_name, endpoint_name):
+        properties = self.get_hosted_service_properties(cloud_service_name, True)
+        for deployment in properties.deployments.deployments:
+            for role in deployment.role_list.roles:
+                for configuration_set in role.configuration_sets.configuration_sets:
+                    if configuration_set.configuration_set_type == NETWORK_CONFIGURATION:
+                        if configuration_set.input_endpoints is not None:
+                            for input_endpoint in configuration_set.input_endpoints.input_endpoints:
+                                if input_endpoint.name == endpoint_name:
+                                    return input_endpoint.port
+        return None
+
 
     # ---------------------------------------- other ---------------------------------------- #
 

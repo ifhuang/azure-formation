@@ -30,8 +30,8 @@
             "system_config" : {
                 "os_family" : "Windows",
                 "host_name" : "hostname",
-                "user_name" : "azureUser888",
-                "user_password" : "PASSword00X"
+                "user_name" : "opentech",
+                "user_password" : "Password01!"
             },
             "network_config" : {
                 "configuration_set_type" : "NetworkConfiguration",

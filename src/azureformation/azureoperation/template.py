@@ -49,6 +49,14 @@ T_RS = 'role_size'
 # os family name
 WINDOWS = 'Windows'
 LINUX = 'Linux'
+# remote parameter name
+RP_N = 'name'
+RP_DN = 'displayname'
+RP_HN = 'hostname'
+RP_PR = 'protocol'
+RP_PO = 'port'
+RP_UN = 'username'
+RP_PA = 'password'
 
 
 class Template:
@@ -127,3 +135,29 @@ class Template:
 
     def get_virtual_machine_size(self):
         return self.virtual_environment[T_RS]
+
+    def get_remote_provider_name(self):
+        return self.virtual_environment[T_R][T_R_PROV]
+
+    def get_remote_port_name(self):
+        return self.virtual_environment[T_R][T_R_IEN]
+
+    def get_remote_paras(self, name, hostname, port):
+        r = self.virtual_environment[T_R]
+        sc = self.virtual_environment[T_SC]
+        remote = {
+            RP_N: name,
+            RP_DN: r[T_R_IEN],
+            RP_HN: hostname,
+            RP_PR: r[T_R_PROT],
+            RP_PO: port,
+            RP_UN: sc[T_SC_UN],
+            RP_PA: sc[T_SC_UP]
+        }
+        return remote
+
+    def get_image_type(self):
+        return self.virtual_environment[T_I][T_I_T]
+
+    def get_image_name(self):
+        return self.virtual_environment[T_I][T_I_N]
