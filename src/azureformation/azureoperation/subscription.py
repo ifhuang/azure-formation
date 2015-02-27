@@ -1,7 +1,7 @@
 __author__ = 'Yifu Huang'
 
 from src.azureformation.log import (
-    log
+    log,
 )
 
 
@@ -9,6 +9,7 @@ class Subscription:
     """
     Subscription of azure resources according to given subscription id
     """
+    ERROR_RESULT = -1
 
     def __init__(self, service):
         self.service = service
@@ -23,7 +24,7 @@ class Subscription:
             result = self.service.get_subscription()
         except Exception as e:
             log.error(e)
-            return -1
+            return self.ERROR_RESULT
         return result.max_storage_accounts - result.current_storage_accounts
 
     def get_available_cloud_service_count(self):
@@ -36,7 +37,7 @@ class Subscription:
             result = self.service.get_subscription()
         except Exception as e:
             log.error(e)
-            return -1
+            return self.ERROR_RESULT
         return result.max_hosted_services - result.current_hosted_services
 
     def get_available_core_count(self):
@@ -49,5 +50,5 @@ class Subscription:
             result = self.service.get_subscription()
         except Exception as e:
             log.error(e)
-            return -1
+            return self.ERROR_RESULT
         return result.max_core_count - result.current_core_count

@@ -1,23 +1,13 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureoperation.utility import (
-    NOT_FOUND,
-    NETWORK_CONFIGURATION,
-    IN_PROGRESS,
-    SUCCEEDED,
-    WAIT_FOR_ASYNC,
-    WAIT_FOR_DEPLOYMENT,
-    READY_ROLE,
-    WAIT_FOR_VIRTUAL_MACHINE
-)
 from src.azureformation.enum import (
-    ADStatus
+    ADStatus,
 )
 from src.azureformation.log import (
-    log
+    log,
 )
 from azure.servicemanagement import (
-    ServiceManagementService
+    ServiceManagementService,
 )
 import time
 
@@ -26,6 +16,10 @@ class Service(ServiceManagementService):
     """
     Wrapper of azure service management service
     """
+    IN_PROGRESS = 'InProgress'
+    SUCCEEDED = 'Succeeded'
+    NOT_FOUND = 'Not found (Not Found)'
+    NETWORK_CONFIGURATION = 'NetworkConfiguration'
 
     def __init__(self, subscription_id, pem_url, management_host):
         super(Service, self).__init__(subscription_id, pem_url, management_host)
@@ -49,7 +43,7 @@ class Service(ServiceManagementService):
         try:
             props = self.get_storage_account_properties(name)
         except Exception as e:
-            if e.message != NOT_FOUND:
+            if e.message != self.NOT_FOUND:
                 log.error(e)
             return False
         return props is not None
@@ -129,7 +123,7 @@ class Service(ServiceManagementService):
         count = 0
         props = self.get_deployment_by_name(service_name, deployment_name)
         while props.status != status:
-            log.debug('%s [%s] loop count: %d' % (WAIT_FOR_DEPLOYMENT, deployment_name, count))
+            log.debug('wait for deployment [%s] loop count: %d' % (deployment_name, count))
             count += 1
             if count > loop:
                 log.error('Timed out waiting for deployment status.')
@@ -174,17 +168,17 @@ class Service(ServiceManagementService):
         return None
 
     def wait_for_virtual_machine(self, cloud_service_name, deployment_name, virtual_machine_name,
-                                 second_per_loop, loop, status=READY_ROLE):
+                                 second_per_loop, loop, status):
         count = 0
-        props = self.get_deployment_by_name(service_name, deployment_name)
+        props = self.get_deployment_by_name(cloud_service_name, deployment_name)
         while self.get_virtual_machine_instance_status(props, virtual_machine_name) != status:
-            log.debug('%s [%s] loop count: %d' % (WAIT_FOR_VIRTUAL_MACHINE, virtual_machine_name, count))
+            log.debug('wait for virtual machine [%s] loop count: %d' % (virtual_machine_name, count))
             count += 1
             if count > loop:
                 log.error('Timed out waiting for role instance status.')
                 return False
             time.sleep(second_per_loop)
-            props = self.get_deployment_by_name(service_name, deployment_name)
+            props = self.get_deployment_by_name(cloud_service_name, deployment_name)
         return self.get_virtual_machine_instance_status(props, virtual_machine_name) == status
 
     def update_role(self, cloud_service_name, deployment_name, virtual_machine_name, network_config):
@@ -242,7 +236,7 @@ class Service(ServiceManagementService):
         for deployment in properties.deployments.deployments:
             for role in deployment.role_list.roles:
                 for configuration_set in role.configuration_sets.configuration_sets:
-                    if configuration_set.configuration_set_type == NETWORK_CONFIGURATION:
+                    if configuration_set.configuration_set_type == self.NETWORK_CONFIGURATION:
                         if configuration_set.input_endpoints is not None:
                             for input_endpoint in configuration_set.input_endpoints.input_endpoints:
                                 endpoints.append(input_endpoint.port)
@@ -253,13 +247,12 @@ class Service(ServiceManagementService):
         for deployment in properties.deployments.deployments:
             for role in deployment.role_list.roles:
                 for configuration_set in role.configuration_sets.configuration_sets:
-                    if configuration_set.configuration_set_type == NETWORK_CONFIGURATION:
+                    if configuration_set.configuration_set_type == self.NETWORK_CONFIGURATION:
                         if configuration_set.input_endpoints is not None:
                             for input_endpoint in configuration_set.input_endpoints.input_endpoints:
                                 if input_endpoint.name == endpoint_name:
                                     return input_endpoint.port
         return None
-
 
     # ---------------------------------------- other ---------------------------------------- #
 
@@ -274,15 +267,15 @@ class Service(ServiceManagementService):
         """
         count = 0
         result = self.get_operation_status(request_id)
-        while result.status == IN_PROGRESS:
-            log.debug('%s [%s] loop count [%d]' % (WAIT_FOR_ASYNC, request_id, count))
+        while result.status == self.IN_PROGRESS:
+            log.debug('wait for async [%s] loop count [%d]' % (request_id, count))
             count += 1
             if count > loop:
                 log.error('Timed out waiting for async operation to complete.')
                 return False
             time.sleep(second_per_loop)
             result = self.get_operation_status(request_id)
-        if result.status != SUCCEEDED:
+        if result.status != self.SUCCEEDED:
             log.error(vars(result))
             if result.error:
                 log.error(result.error.code)

@@ -267,6 +267,9 @@ class AzureVirtualMachine(DBBase):
     deployment = db.relationship('AzureDeployment', backref=db.backref('azure_virtual_machine_d', lazy='dynamic'))
     experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'))
     experiment = db.relationship('Experiment', backref=db.backref('azure_virtual_machine_e', lazy='dynamic'))
+    virtual_environment_id = db.Column(db.Integer, db.ForeignKey('virtual_environment.id', ondelete='CASCADE'))
+    virtual_environment = db.relationship('VirtualEnvironment',
+                                          backref=db.backref('azure_virtual_machine_v', lazy='dynamic'))
     create_time = db.Column(db.DateTime)
     last_modify_time = db.Column(db.DateTime)
 
