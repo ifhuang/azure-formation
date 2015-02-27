@@ -1,35 +1,35 @@
 __author__ = 'Yifu Huang'
 
 from src.azureformation.azureoperation.subscription import (
-    Subscription
+    Subscription,
 )
 from src.azureformation.azureoperation.utility import (
     AZURE_FORMATION,
     commit_azure_log,
     commit_azure_cloud_service,
     contain_azure_cloud_service,
-    delete_azure_cloud_service
+    delete_azure_cloud_service,
 )
 from src.azureformation.log import (
-    log
+    log,
 )
 from src.azureformation.enum import (
+    CLOUD_SERVICE,
     ALOperation,
     ALStatus,
     ACSStatus,
-    CLOUD_SERVICE
 )
 
 create_cloud_service_error = [
     '%s [%s] %s',
     '%s [%s] name not available',
     '%s [%s] subscription not enough',
-    '%s [%s] created but not exist'
+    '%s [%s] created but not exist',
 ]
 create_cloud_service_info = [
     '%s [%s] created',
+    '%s [%s] exist and created by %s before',
     '%s [%s] exist but not created by %s before',
-    '%s [%s] exist and created by %s before'
 ]
 
 
@@ -64,7 +64,7 @@ class CloudService:
                 log.error(m)
                 return False
             # delete old azure cloud service in database, cascade delete old azure deployment,
-            # old azure virtual machine, old azure end point
+            # old azure virtual machine and old azure end point
             delete_azure_cloud_service(name)
             try:
                 self.service.create_hosted_service(name=name,
@@ -87,14 +87,14 @@ class CloudService:
                 commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.END, m, 0)
                 log.debug(m)
         else:
-            # check whether cloud service created by this function before
+            # check whether cloud service created by azure formation before
             if contain_azure_cloud_service(name):
-                m = create_cloud_service_info[2] % (CLOUD_SERVICE, name, AZURE_FORMATION)
-                commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.END, m, 2)
-            else:
                 m = create_cloud_service_info[1] % (CLOUD_SERVICE, name, AZURE_FORMATION)
-                commit_azure_cloud_service(name, label, location, ACSStatus.CREATED, experiment)
                 commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.END, m, 1)
+            else:
+                m = create_cloud_service_info[2] % (CLOUD_SERVICE, name, AZURE_FORMATION)
+                commit_azure_cloud_service(name, label, location, ACSStatus.CREATED, experiment)
+                commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.END, m, 2)
             log.debug(m)
         return True
 
