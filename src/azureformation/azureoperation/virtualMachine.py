@@ -38,7 +38,8 @@ from src.azureformation.log import (
 create_deployment_error = [
     '%s [%s] %s',
     '%s [%s] wait for async fail',
-    '%s [%s] wait for deployment fail'
+    '%s [%s] wait for deployment fail',
+    '%s [%s] subscription not enough'
 ]
 create_deployment_info = [
     '%s [%s] created',
@@ -51,12 +52,56 @@ create_virtual_machine_error = [
     '%s [%s] wait for virtual machine fail',
     '%s [%s] wait for async fail (update network config)',
     '%s [%s] wait for virtual machine fail (update network config)',
-    '%s [%s] exist but not created by %s before'
+    '%s [%s] exist but not created by %s before',
+    '%s [%s] subscription not enough'
 ]
 create_virtual_machine_info = [
     '%s [%s] created',
     '%s [%s] exist and created by %s before'
 ]
+size_core_map = {
+    'a0': 1,
+    'basic_a0': 1,
+    'a1': 1,
+    'basic_a1': 1,
+    'a2': 2,
+    'basic_a2': 2,
+    'a3': 4,
+    'basic_a3': 4,
+    'a4': 8,
+    'basic_a4': 8,
+    'extra small': 1,
+    'small': 1,
+    'medium': 2,
+    'large': 4,
+    'extra large': 8,
+    'a5': 2,
+    'a6': 4,
+    'a7': 8,
+    'a8': 8,
+    'a9': 16,
+    'standard_d1': 1,
+    'standard_d2': 2,
+    'standard_d3': 4,
+    'standard_d4': 8,
+    'standard_d11': 2,
+    'standard_d12': 4,
+    'standard_d13': 8,
+    'standard_d14': 16,
+    'standard_ds1': 1,
+    'standard_ds2': 2,
+    'standard_ds3': 4,
+    'standard_ds4': 8,
+    'standard_ds11': 2,
+    'standard_ds12': 4,
+    'standard_ds13': 8,
+    'standard_ds14': 16,
+    'standard_g1': 2,
+    'standard_g2': 4,
+    'standard_g3': 8,
+    'standard_g4': 16,
+    'standard_g5': 32
+}
 
 
 class VirtualMachine:
@@ -81,8 +126,16 @@ class VirtualMachine:
         cloud_service_name = template.get_cloud_service_name()
         deployment_slot = template.get_deployment_slot()
         virtual_machine_name = '%s-%d' % (template.get_virtual_machine_name(), experiment.id)
-        virtual_machine_label = template.get_virtual_machine_label()
         virtual_machine_size = template.get_virtual_machine_size()
+        if self.subscription.get_available_core_count() < size_core_map[virtual_machine_size.lower()]:
+            m = create_deployment_error[3] % (DEPLOYMENT, deployment_slot)
+            commit_azure_log(experiment, ALOperation.CREATE_DEPLOYMENT, ALStatus.FAIL, m, 3)
+            log.error(m)
+            m = create_virtual_machine_error[6] % (VIRTUAL_MACHINE, virtual_machine_name)
+            commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 6)
+            log.error(m)
+            return False
+        virtual_machine_label = template.get_virtual_machine_label()
         system_config = template.get_system_config()
         os_virtual_hard_disk = template.get_os_virtual_hard_disk()
         network_config = template.get_network_config()
@@ -192,7 +245,7 @@ class VirtualMachine:
                                                                         network_config,
                                                                         role_size=virtual_machine_size)
             except Exception as e:
-                m = create_deployment_error[0] % (DEPLOYMENT, deployment_name, e.message)
+                m = create_deployment_error[0] % (DEPLOYMENT, deployment_slot, e.message)
                 commit_azure_log(experiment, ALOperation.CREATE_DEPLOYMENT, ALStatus.FAIL, m, 0)
                 m = create_virtual_machine_error[0] % (VIRTUAL_MACHINE, virtual_machine_name, e.message)
                 commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 0)
@@ -200,7 +253,7 @@ class VirtualMachine:
                 return False
             # make sure async operation succeeds
             if not self.service.wait_for_async(result.request_id, ASYNC_TICK, ASYNC_LOOP):
-                m = create_deployment_error[1] % (DEPLOYMENT, deployment_name)
+                m = create_deployment_error[1] % (DEPLOYMENT, deployment_slot)
                 commit_azure_log(experiment, ALOperation.CREATE_DEPLOYMENT, ALStatus.FAIL, m, 1)
                 log.error(m)
                 m = create_virtual_machine_error[1] % (VIRTUAL_MACHINE, virtual_machine_name)
@@ -212,7 +265,7 @@ class VirtualMachine:
                                                     deployment_name,
                                                     DEPLOYMENT_TICK,
                                                     DEPLOYMENT_LOOP):
-                m = create_deployment_error[2] % (DEPLOYMENT, deployment_name)
+                m = create_deployment_error[2] % (DEPLOYMENT, deployment_slot)
                 commit_azure_log(experiment, ALOperation.CREATE_DEPLOYMENT, ALStatus.FAIL, m, 2)
                 log.error(m)
                 return False
@@ -283,8 +336,12 @@ class VirtualMachine:
                 commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.END)
         return True
 
-    # todo update virtual machine
-    def update_virtual_machine(self):
+    # todo shutdown virtual machine
+    def shutdown_virtual_machine(self):
+        raise NotImplementedError
+
+    # todo start virtual machine
+    def start_virtual_machine(self):
         raise NotImplementedError
 
     # todo delete virtual machine

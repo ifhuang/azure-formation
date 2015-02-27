@@ -6,12 +6,11 @@ class AzureFormation():
     Azure cloud service management
     For logic: besides resources created by this program itself, it can reuse other storage,
     container, cloud service and deployment exist in azure (by sync them into database)
-    For template: one storage account, one container, one cloud service, one deployment,
-    multiple virtual machines (Windows/Linux), multiple input endpoints
+    For template: a template consists of a list of virtual environments, and a virtual environment
+    is a virtual machine with its storage account, container, cloud service and deployment
     """
 
     def __init__(self):
-        super(AzureFormation, self).__init__()
         self.sms = None
         self.user_template = None
         self.template_config = None
