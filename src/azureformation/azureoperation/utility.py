@@ -12,6 +12,10 @@ from src.azureformation.database.models import (
     AzureEndpoint,
     VirtualEnvironment,
 )
+from azure.servicemanagement import (
+    ConfigurationSet,
+    ConfigurationSetInputEndpoint,
+)
 
 # -------------------------------------------------- constants --------------------------------------------------#
 # project name
@@ -23,6 +27,12 @@ DEPLOYMENT_TICK = 30
 DEPLOYMENT_LOOP = 60
 VIRTUAL_MACHINE_TICK = 30
 VIRTUAL_MACHINE_LOOP = 60
+PORT_BOUND = 65536
+# endpoint constants
+ENDPOINT_PREFIX = 'AUTO-'
+ENDPOINT_PROTOCOL = 'TCP'
+# virtual machine constants
+READY_ROLE = 'ReadyRole'
 
 
 # -------------------------------------------------- azure log --------------------------------------------------#
@@ -151,6 +161,18 @@ def commit_azure_endpoint(name, protocol, public_port, private_port, virtual_mac
     db_adapter.commit()
 
 
+def find_unassigned_endpoint(endpoint, assigned_endpoints):
+    """
+    Be careful data type of input parameters
+    :param endpoint: int
+    :param assigned_endpoints: list of str
+    :return:
+    """
+    while str(endpoint) in assigned_endpoints:
+        endpoint = (endpoint + 1) % PORT_BOUND
+    return endpoint
+
+
 # --------------------------------------------- virtual environment ---------------------------------------------#
 def commit_virtual_environment(provider, name, image, status, remote_provider, remote_paras, experiment):
     ve = db_adapter.add_object_kwargs(VirtualEnvironment,
@@ -163,3 +185,52 @@ def commit_virtual_environment(provider, name, image, status, remote_provider, r
                                       experiment=experiment)
     db_adapter.commit()
     return ve
+
+
+# --------------------------------------------- network config ---------------------------------------------#
+def add_endpoint_to_network_config(network_config, public_endpoint, private_endpoint):
+    """
+    Return a new network config
+    :param network_config:
+    :param public_endpoint:
+    :param private_endpoint:
+    :return:
+    """
+    new_network_config = ConfigurationSet()
+    new_network_config.configuration_set_type = network_config.configuration_set_type
+    if network_config.input_endpoints is not None:
+        for input_endpoint in network_config.input_endpoints.input_endpoints:
+            new_network_config.input_endpoints.input_endpoints.append(
+                ConfigurationSetInputEndpoint(input_endpoint.name,
+                                              input_endpoint.protocol,
+                                              input_endpoint.port,
+                                              input_endpoint.local_port)
+            )
+    new_network_config.input_endpoints.input_endpoints.append(
+        ConfigurationSetInputEndpoint(ENDPOINT_PREFIX + str(public_endpoint),
+                                      ENDPOINT_PROTOCOL,
+                                      str(public_endpoint),
+                                      str(private_endpoint))
+    )
+    return new_network_config
+
+
+def delete_endpoint_from_network_config(network_config, private_endpoint):
+    """
+    Return a new network config
+    :param network_config:
+    :param private_endpoint:
+    :return:
+    """
+    new_network_config = ConfigurationSet()
+    new_network_config.configuration_set_type = network_config.configuration_set_type
+    if network_config.input_endpoints is not None:
+        for input_endpoint in network_config.input_endpoints.input_endpoints:
+            if input_endpoint.local_port != str(private_endpoint):
+                new_network_config.input_endpoints.input_endpoints.append(
+                    ConfigurationSetInputEndpoint(input_endpoint.name,
+                                                  input_endpoint.protocol,
+                                                  input_endpoint.port,
+                                                  input_endpoint.local_port)
+                )
+    return new_network_config

@@ -1,5 +1,8 @@
 __author__ = 'Yifu Huang'
 
+from src.azureformation.azureoperation.utility import (
+    find_unassigned_endpoint,
+)
 from azure.servicemanagement import (
     WindowsConfigurationSet,
     LinuxConfigurationSet,
@@ -68,7 +71,6 @@ class TemplateUnit:
     # other constants
     BLOB_BASE = '%s-%s-%s-%s-%s-%s-%s-%s.vhd'
     MEDIA_BASE = 'https://%s.%s/%s/%s'
-    PORT_BOUND = 65536
 
     def __init__(self, virtual_environment):
         self.virtual_environment = virtual_environment
@@ -154,10 +156,8 @@ class TemplateUnit:
         input_endpoints = nc[self.T_NC_IE]
         assigned_endpoints = service.get_assigned_endpoints(cs[self.T_CS_SN])
         for input_endpoint in input_endpoints:
-            port = int(input_endpoint[self.T_NC_IE_LP])
             # avoid duplicate endpoint under same cloud service
-            while str(port) in assigned_endpoints:
-                port = (port + 1) % self.PORT_BOUND
+            port = find_unassigned_endpoint(int(input_endpoint[self.T_NC_IE_LP]), assigned_endpoints)
             assigned_endpoints.append(str(port))
             network_config.input_endpoints.input_endpoints.append(
                 ConfigurationSetInputEndpoint(

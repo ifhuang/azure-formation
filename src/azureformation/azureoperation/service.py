@@ -229,6 +229,17 @@ class Service(ServiceManagementService):
                                              role_size=virtual_machine_size,
                                              vm_image_name=vm_image_name)
 
+    def get_virtual_machine_network_config(self, cloud_service_name, deployment_name, virtual_machine_name):
+        try:
+            virtual_machine = self.get_virtual_machine(cloud_service_name, deployment_name, virtual_machine_name)
+        except Exception as e:
+            log.error(e)
+            return None
+        for configuration_set in virtual_machine.configuration_sets.configuration_sets:
+            if configuration_set.configuration_set_type == self.NETWORK_CONFIGURATION:
+                return configuration_set
+        return None
+
     # ---------------------------------------- endpoint ---------------------------------------- #
 
     def get_assigned_endpoints(self, cloud_service_name):

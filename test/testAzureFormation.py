@@ -12,12 +12,25 @@ from src.azureformation.azureoperation.storageAccount import (
 from src.azureformation.azureoperation.cloudService import (
     CloudService,
 )
+from src.azureformation.azureoperation.virtualMachine import (
+    VirtualMachine,
+)
+from src.azureformation.azureoperation.templateUnit import (
+    TemplateUnit
+)
+from src.azureformation.database import (
+    db_adapter,
+)
+from src.azureformation.database.models import (
+    Experiment,
+)
 from src.azureformation.credentials import (
     SUBSCRIPTION_ID,
     PEM_CERTIFICATE,
     MANAGEMENT_HOST,
 )
 import unittest
+import json
 
 
 class TestAzureFormation(unittest.TestCase):
@@ -34,7 +47,7 @@ class TestAzureFormation(unittest.TestCase):
         c_count = subscription.get_available_core_count()
         self.assertGreaterEqual(c_count, 0)
 
-    def test_storage_account(self):
+    def test_create_storage_account(self):
         storage = StorageAccount(self.service)
         result = storage.create_storage_account('testpp', 'description', 'label', 'China East', None)
         self.assertTrue(result)
@@ -45,7 +58,7 @@ class TestAzureFormation(unittest.TestCase):
         result = storage.create_storage_account('testppp', 'description', 'label', 'China East', None)
         self.assertTrue(result)
 
-    def test_cloud_service(self):
+    def test_create_cloud_service(self):
         cloud = CloudService(self.service)
         result = cloud.create_cloud_service('open-xml-host', 'label', 'China East', None)
         self.assertTrue(result)
@@ -54,6 +67,32 @@ class TestAzureFormation(unittest.TestCase):
         result = cloud.create_cloud_service('open-hackathon', 'label', 'China East', None)
         self.assertFalse(result)
         result = cloud.create_cloud_service('open-xml-host-2', 'label', 'China East', None)
+        self.assertTrue(result)
+
+    def test_create_virtual_machine(self):
+        experiment = db_adapter.add_object_kwargs(Experiment)
+        db_adapter.commit()
+        template_unit_json = json.load(file('../src/azureformation/resources/new-template-1.js'))['virtual_environments'][0]
+        storage = StorageAccount(self.service)
+        sa = template_unit_json['storage_account']
+        result = storage.create_storage_account(sa['service_name'],
+                                                sa['description'],
+                                                sa['label'],
+                                                sa['location'],
+                                                experiment)
+        self.assertTrue(result)
+        cloud = CloudService(self.service)
+        cs = template_unit_json['cloud_service']
+        result = cloud.create_cloud_service(cs['service_name'],
+                                            cs['label'],
+                                            cs['location'],
+                                            experiment)
+        self.assertTrue(result)
+        vm = VirtualMachine(self.service)
+        template_unit = TemplateUnit(template_unit_json)
+        result = vm.create_virtual_machine(template_unit, experiment)
+        self.assertTrue(result)
+        result = vm.create_virtual_machine(template_unit, experiment)
         self.assertTrue(result)
 
 if __name__ == '__main__':

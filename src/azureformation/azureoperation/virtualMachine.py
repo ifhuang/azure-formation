@@ -11,6 +11,7 @@ from src.azureformation.azureoperation.utility import (
     DEPLOYMENT_LOOP,
     VIRTUAL_MACHINE_TICK,
     VIRTUAL_MACHINE_LOOP,
+    READY_ROLE,
     commit_azure_log,
     commit_azure_deployment,
     commit_azure_virtual_machine,
@@ -35,6 +36,7 @@ from src.azureformation.enum import (
 from src.azureformation.log import (
     log,
 )
+import json
 
 
 class VirtualMachine:
@@ -109,7 +111,6 @@ class VirtualMachine:
         'standard_g5': 32,
     }
     VIRTUAL_MACHINE_NAME_BASE = '%s-%d'
-    READY_ROLE = 'ReadyRole'
 
     def __init__(self, service):
         self.service = service
@@ -198,7 +199,8 @@ class VirtualMachine:
                                                              deployment_name,
                                                              virtual_machine_name,
                                                              VIRTUAL_MACHINE_TICK,
-                                                             VIRTUAL_MACHINE_LOOP):
+                                                             VIRTUAL_MACHINE_LOOP,
+                                                             READY_ROLE):
                     m = self.CREATE_VIRTUAL_MACHINE_ERROR[3] % (VIRTUAL_MACHINE, virtual_machine_name)
                     commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 3)
                     log.error(m)
@@ -270,7 +272,7 @@ class VirtualMachine:
                                                          virtual_machine_name,
                                                          VIRTUAL_MACHINE_TICK,
                                                          VIRTUAL_MACHINE_LOOP,
-                                                         self.READY_ROLE):
+                                                         READY_ROLE):
                 m = self.CREATE_VIRTUAL_MACHINE_ERROR[3] % (VIRTUAL_MACHINE, virtual_machine_name)
                 commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 3)
                 log.error(m)
@@ -334,7 +336,7 @@ class VirtualMachine:
                                                          virtual_machine_name,
                                                          VIRTUAL_MACHINE_TICK,
                                                          VIRTUAL_MACHINE_LOOP,
-                                                         self.READY_ROLE):
+                                                         READY_ROLE):
                 m = self.CREATE_VIRTUAL_MACHINE_ERROR[5] % (VIRTUAL_MACHINE, virtual_machine_name)
                 commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 5)
                 log.error(m)
@@ -343,7 +345,8 @@ class VirtualMachine:
                                                                deployment_name,
                                                                virtual_machine_name)
         remote_port_name = template_unit.get_remote_port_name()
-        remote_port = self.service.get_public_endpoint(remote_port_name)
+        remote_port = self.service.get_public_endpoint(cloud_service_name,
+                                                       remote_port_name)
         remote_paras = template_unit.get_remote_paras(virtual_machine_name,
                                                       public_ip,
                                                       remote_port)
@@ -352,7 +355,7 @@ class VirtualMachine:
                                                          template_unit.get_image_name(),
                                                          VEStatus.Running,
                                                          VERemoteProvider.Guacamole,
-                                                         remote_paras,
+                                                         json.dumps(remote_paras),
                                                          experiment)
         dns = self.service.get_deployment_dns(cloud_service_name, deployment_slot)
         private_ip = self.service.get_virtual_machine_private_ip(cloud_service_name,
