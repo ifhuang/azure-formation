@@ -51,6 +51,9 @@ class TemplateUnit:
     T_R_PROT = 'protocol'
     T_R_IEN = 'input_endpoint_name'
     T_RS = 'role_size'
+    # image type name
+    OS = 'os'
+    VM = 'vm'
     # os family name
     WINDOWS = 'Windows'
     LINUX = 'Linux'
@@ -73,10 +76,26 @@ class TemplateUnit:
     def get_image_type(self):
         return self.virtual_environment[self.T_I][self.T_I_T]
 
+    def is_vm_image(self):
+        return self.get_image_type() == self.VM
+
+    def get_vm_image_name(self):
+        """
+        Return None if image type is not vm
+        :return:
+        """
+        return self.virtual_environment[self.T_I][self.T_I_N] if self.is_vm_image() else None
+
     def get_image_name(self):
         return self.virtual_environment[self.T_I][self.T_I_N]
 
     def get_system_config(self):
+        """
+        Return None if image type is vm
+        :return:
+        """
+        if self.is_vm_image():
+            return None
         sc = self.virtual_environment[self.T_SC]
         # check whether virtual machine is Windows or Linux
         if sc[self.T_SC_OF] == self.WINDOWS:
@@ -94,9 +113,12 @@ class TemplateUnit:
 
     def get_os_virtual_hard_disk(self):
         """
+        Return None if image type is vm
         Media link should be unique
         :return:
         """
+        if self.is_vm_image():
+            return None
         i = self.virtual_environment[self.T_I]
         sa = self.virtual_environment[self.T_SA]
         c = self.virtual_environment[self.T_C]
@@ -116,12 +138,15 @@ class TemplateUnit:
         os_virtual_hard_disk = OSVirtualHardDisk(i[self.T_I_N], media_link)
         return os_virtual_hard_disk
 
-    def get_network_config(self, service):
+    def get_network_config(self, service, update):
         """
+        Return None if image type is vm and not update
         Public endpoint should be assigned in real time
         :param service:
         :return:
         """
+        if self.is_vm_image() and not update:
+            return None
         cs = self.virtual_environment[self.T_CS]
         nc = self.virtual_environment[self.T_NC]
         network_config = ConfigurationSet()

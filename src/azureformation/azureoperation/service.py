@@ -68,7 +68,7 @@ class Service(ServiceManagementService):
         try:
             props = self.get_hosted_service_properties(name)
         except Exception as e:
-            if e.message != NOT_FOUND:
+            if e.message != self.NOT_FOUND:
                 log.error(e)
             return False
         return props is not None
@@ -81,47 +81,32 @@ class Service(ServiceManagementService):
 
     # ---------------------------------------- deployment ---------------------------------------- #
 
-    def get_deployment_by_slot(self, service_name, deployment_slot):
-        return super(Service, self).get_deployment_by_slot(service_name, deployment_slot)
+    def get_deployment_by_slot(self, cloud_service_name, deployment_slot):
+        return super(Service, self).get_deployment_by_slot(cloud_service_name, deployment_slot)
 
-    def get_deployment_by_name(self, service_name, deployment_name):
-        return super(Service, self).get_deployment_by_name(service_name, deployment_name)
+    def get_deployment_by_name(self, cloud_service_name, deployment_name):
+        return super(Service, self).get_deployment_by_name(cloud_service_name, deployment_name)
 
-    def deployment_exists(self, service_name, deployment_slot):
-        """
-        Check whether specific deployment slot exist in specific azure subscription
-        :param service_name:
-        :param deployment_slot:
-        :return:
-        """
+    def deployment_exists(self, cloud_service_name, deployment_slot):
         try:
-            props = self.get_deployment_by_slot(service_name, deployment_slot)
+            props = self.get_deployment_by_slot(cloud_service_name, deployment_slot)
         except Exception as e:
-            if e.message != NOT_FOUND:
+            if e.message != self.NOT_FOUND:
                 log.error(e)
             return False
         return props is not None
 
-    def get_deployment_name(self, service_name, deployment_slot):
+    def get_deployment_name(self, cloud_service_name, deployment_slot):
         try:
-            props = self.get_deployment_by_slot(service_name, deployment_slot)
+            props = self.get_deployment_by_slot(cloud_service_name, deployment_slot)
         except Exception as e:
             log.error(e)
             return None
-        return props.name
+        return None if props is None else props.name
 
-    def wait_for_deployment(self, service_name, deployment_name, second_per_loop, loop, status=ADStatus.RUNNING):
-        """
-        Wait for deployment until running, up to second_per_loop * loop
-        :param service_name:
-        :param deployment_name:
-        :param second_per_loop:
-        :param loop:
-        :param status:
-        :return:
-        """
+    def wait_for_deployment(self, cloud_service_name, deployment_name, second_per_loop, loop, status=ADStatus.RUNNING):
         count = 0
-        props = self.get_deployment_by_name(service_name, deployment_name)
+        props = self.get_deployment_by_name(cloud_service_name, deployment_name)
         while props.status != status:
             log.debug('wait for deployment [%s] loop count: %d' % (deployment_name, count))
             count += 1
@@ -129,22 +114,30 @@ class Service(ServiceManagementService):
                 log.error('Timed out waiting for deployment status.')
                 return False
             time.sleep(second_per_loop)
-            props = self.get_deployment_by_name(service_name, deployment_name)
+            props = self.get_deployment_by_name(cloud_service_name, deployment_name)
         return props.status == status
 
-    def get_deployment_dns(self, service_name, deployment_slot):
+    def get_deployment_dns(self, cloud_service_name, deployment_slot):
         try:
-            props = self.get_deployment_by_slot(service_name, deployment_slot)
+            props = self.get_deployment_by_slot(cloud_service_name, deployment_slot)
         except Exception as e:
             log.error(e)
             return None
-        return props.url
+        return None if props is None else props.url
 
     # ---------------------------------------- virtual machine ---------------------------------------- #
 
-    def create_virtual_machine_deployment(self, cloud_service_name, deployment_name, deployment_slot,
-                                          virtual_machine_label, virtual_machine_name, system_config,
-                                          os_virtual_hard_disk, network_config, virtual_machine_size):
+    def create_virtual_machine_deployment(self,
+                                          cloud_service_name,
+                                          deployment_name,
+                                          deployment_slot,
+                                          virtual_machine_label,
+                                          virtual_machine_name,
+                                          system_config,
+                                          os_virtual_hard_disk,
+                                          network_config,
+                                          virtual_machine_size,
+                                          vm_image_name):
         return super(Service, self).create_virtual_machine_deployment(cloud_service_name,
                                                                       deployment_name,
                                                                       deployment_slot,
@@ -153,22 +146,22 @@ class Service(ServiceManagementService):
                                                                       system_config,
                                                                       os_virtual_hard_disk,
                                                                       network_config=network_config,
-                                                                      role_size=virtual_machine_size)
+                                                                      role_size=virtual_machine_size,
+                                                                      vm_image_name=vm_image_name)
 
-    def get_virtual_machine_instance_status(self, deployment, role_instance_name):
-        """
-        Get virtual machine status
-        :param deployment:
-        :param role_instance_name:
-        :return:
-        """
+    def get_virtual_machine_instance_status(self, deployment, virtual_machine_name):
         for role_instance in deployment.role_instance_list:
-            if role_instance.instance_name == role_instance_name:
+            if role_instance.instance_name == virtual_machine_name:
                 return role_instance.instance_status
         return None
 
-    def wait_for_virtual_machine(self, cloud_service_name, deployment_name, virtual_machine_name,
-                                 second_per_loop, loop, status):
+    def wait_for_virtual_machine(self,
+                                 cloud_service_name,
+                                 deployment_name,
+                                 virtual_machine_name,
+                                 second_per_loop,
+                                 loop,
+                                 status):
         count = 0
         props = self.get_deployment_by_name(cloud_service_name, deployment_name)
         while self.get_virtual_machine_instance_status(props, virtual_machine_name) != status:
@@ -181,7 +174,11 @@ class Service(ServiceManagementService):
             props = self.get_deployment_by_name(cloud_service_name, deployment_name)
         return self.get_virtual_machine_instance_status(props, virtual_machine_name) == status
 
-    def update_role(self, cloud_service_name, deployment_name, virtual_machine_name, network_config):
+    def update_virtual_machine_network_config(self,
+                                              cloud_service_name,
+                                              deployment_name,
+                                              virtual_machine_name,
+                                              network_config):
         return super(Service, self).update_role(cloud_service_name,
                                                 deployment_name,
                                                 virtual_machine_name,
@@ -202,31 +199,35 @@ class Service(ServiceManagementService):
                 return role.ip_address
         return None
 
-    def get_role(self, service_name, deployment_name, role_name):
-        return super(Service, self).get_role(service_name, deployment_name, role_name)
+    def get_virtual_machine(self, cloud_service_name, deployment_name, role_name):
+        return super(Service, self).get_role(cloud_service_name, deployment_name, role_name)
 
-    def role_exists(self, service_name, deployment_name, role_name):
-        """
-        Check whether specific virtual machine exist in specific azure subscription
-        :param service_name:
-        :param deployment_name:
-        :param role_name:
-        :return:
-        """
+    def virtual_machine_exists(self, cloud_service_name, deployment_name, virtual_machine_name):
         try:
-            props = self.get_role(service_name, deployment_name, role_name)
+            props = self.get_virtual_machine(cloud_service_name, deployment_name, virtual_machine_name)
         except Exception as e:
-            if e.message != NOT_FOUND:
+            if e.message != self.NOT_FOUND:
                 log.error(e)
             return False
         return props is not None
 
-    def add_role(self, cloud_service_name, deployment_name, virtual_machine_name,
-                 system_config, os_virtual_hard_disk, network_config,
-                 vm_image_name, role_size):
-        return super(Service, self).add_role(cloud_service_name, deployment_name, virtual_machine_name,
-                                             system_config, os_virtual_hard_disk, network_config,
-                                             vm_image_name, role_size)
+    def add_virtual_machine(self,
+                            cloud_service_name,
+                            deployment_name,
+                            virtual_machine_name,
+                            system_config,
+                            os_virtual_hard_disk,
+                            network_config,
+                            virtual_machine_size,
+                            vm_image_name):
+        return super(Service, self).add_role(cloud_service_name,
+                                             deployment_name,
+                                             virtual_machine_name,
+                                             system_config,
+                                             os_virtual_hard_disk,
+                                             network_config=network_config,
+                                             role_size=virtual_machine_size,
+                                             vm_image_name=vm_image_name)
 
     # ---------------------------------------- endpoint ---------------------------------------- #
 
