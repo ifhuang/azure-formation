@@ -16,7 +16,10 @@ from src.azureformation.azureoperation.virtualMachine import (
     VirtualMachine,
 )
 from src.azureformation.azureoperation.templateUnit import (
-    TemplateUnit
+    TemplateUnit,
+)
+from src.azureformation.azureoperation.endpoint import (
+    Endpoint,
 )
 from src.azureformation.database import (
     db_adapter,
@@ -93,6 +96,16 @@ class TestAzureFormation(unittest.TestCase):
         result = vm.create_virtual_machine(template_unit, experiment)
         self.assertTrue(result)
         result = vm.create_virtual_machine(template_unit, experiment)
+        self.assertTrue(result)
+
+    def test_assign_public_endpoint(self):
+        endpoint = Endpoint(self.service)
+        result = endpoint.assign_public_endpoint('open-tech-service', 'production', 'open-tech-role-69', 84)
+        self.assertGreater(result, 0)
+
+    def test_release_public_endpoint(self):
+        endpoint = Endpoint(self.service)
+        result = endpoint.release_public_endpoint('open-tech-service', 'production', 'open-tech-role-69', 84)
         self.assertTrue(result)
 
 if __name__ == '__main__':
