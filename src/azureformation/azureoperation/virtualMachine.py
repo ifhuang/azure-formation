@@ -345,8 +345,10 @@ class VirtualMachine:
                                                                deployment_name,
                                                                virtual_machine_name)
         remote_port_name = template_unit.get_remote_port_name()
-        remote_port = self.service.get_public_endpoint(cloud_service_name,
-                                                       remote_port_name)
+        remote_port = self.service.get_virtual_machine_public_endpoint(cloud_service_name,
+                                                                       deployment_name,
+                                                                       virtual_machine_name,
+                                                                       remote_port_name)
         remote_paras = template_unit.get_remote_paras(virtual_machine_name,
                                                       public_ip,
                                                       remote_port)

@@ -184,6 +184,20 @@ class Service(ServiceManagementService):
                                                 virtual_machine_name,
                                                 network_config=network_config)
 
+    def get_virtual_machine_public_endpoint(self,
+                                            cloud_service_name,
+                                            deployment_name,
+                                            virtual_machine_name,
+                                            endpoint_name):
+        deployment = self.get_deployment_by_name(cloud_service_name, deployment_name)
+        for role in deployment.role_instance_list:
+            if role.role_name == virtual_machine_name:
+                if role.instance_endpoints is not None:
+                    for instance_endpoint in role.instance_endpoints:
+                        if instance_endpoint.name == endpoint_name:
+                            return instance_endpoint.public_port
+        return None
+
     def get_virtual_machine_public_ip(self, cloud_service_name, deployment_name, virtual_machine_name):
         deployment = self.get_deployment_by_name(cloud_service_name, deployment_name)
         for role in deployment.role_instance_list:
@@ -258,18 +272,6 @@ class Service(ServiceManagementService):
                             for input_endpoint in configuration_set.input_endpoints.input_endpoints:
                                 endpoints.append(input_endpoint.port)
         return map(int, endpoints)
-
-    def get_public_endpoint(self, cloud_service_name, endpoint_name):
-        properties = self.get_hosted_service_properties(cloud_service_name, True)
-        for deployment in properties.deployments.deployments:
-            for role in deployment.role_list.roles:
-                for configuration_set in role.configuration_sets.configuration_sets:
-                    if configuration_set.configuration_set_type == self.NETWORK_CONFIGURATION:
-                        if configuration_set.input_endpoints is not None:
-                            for input_endpoint in configuration_set.input_endpoints.input_endpoints:
-                                if input_endpoint.name == endpoint_name:
-                                    return input_endpoint.port
-        return None
 
     # ---------------------------------------- other ---------------------------------------- #
 

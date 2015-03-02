@@ -49,6 +49,7 @@ class TemplateUnit:
     T_NC_IE_N = 'name'
     T_NC_IE_PR = 'protocol'
     T_NC_IE_LP = 'local_port'
+    T_NC_IE_PO = 'port'
     T_R = 'remote'
     T_R_PROV = 'provider'
     T_R_PROT = 'protocol'
@@ -158,13 +159,14 @@ class TemplateUnit:
         assigned_endpoints = service.get_assigned_endpoints(cs[self.T_CS_SN])
         endpoints = map(lambda i: i[self.T_NC_IE_LP], input_endpoints)
         unassigned_endpoints = map(str, find_unassigned_endpoints(endpoints, assigned_endpoints))
-        for idx, val in enumerate(input_endpoints):
+        map(lambda i, u: i.update({self.T_NC_IE_PO: u}), zip(input_endpoints, unassigned_endpoints))
+        for input_endpoint in input_endpoints:
             network_config.input_endpoints.input_endpoints.append(
                 ConfigurationSetInputEndpoint(
-                    val[self.T_NC_IE_N],
-                    val[self.T_NC_IE_PR],
-                    unassigned_endpoints[idx],
-                    val[self.T_NC_IE_LP]
+                    input_endpoint[self.T_NC_IE_N],
+                    input_endpoint[self.T_NC_IE_PR],
+                    input_endpoint[self.T_NC_IE_PO],
+                    input_endpoint[self.T_NC_IE_LP]
                 )
             )
         return network_config
