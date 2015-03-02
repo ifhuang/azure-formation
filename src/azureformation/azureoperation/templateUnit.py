@@ -1,7 +1,7 @@
 __author__ = 'Yifu Huang'
 
 from src.azureformation.azureoperation.utility import (
-    find_unassigned_endpoint,
+    find_unassigned_endpoints,
 )
 from azure.servicemanagement import (
     WindowsConfigurationSet,
@@ -154,17 +154,17 @@ class TemplateUnit:
         network_config = ConfigurationSet()
         network_config.configuration_set_type = nc[self.T_NC_CST]
         input_endpoints = nc[self.T_NC_IE]
+        # avoid duplicate endpoint under same cloud service
         assigned_endpoints = service.get_assigned_endpoints(cs[self.T_CS_SN])
-        for input_endpoint in input_endpoints:
-            # avoid duplicate endpoint under same cloud service
-            port = find_unassigned_endpoint(int(input_endpoint[self.T_NC_IE_LP]), assigned_endpoints)
-            assigned_endpoints.append(str(port))
+        endpoints = map(lambda i: i[self.T_NC_IE_LP], input_endpoints)
+        unassigned_endpoints = map(str, find_unassigned_endpoints(endpoints, assigned_endpoints))
+        for idx, val in enumerate(input_endpoints):
             network_config.input_endpoints.input_endpoints.append(
                 ConfigurationSetInputEndpoint(
-                    input_endpoint[self.T_NC_IE_N],
-                    input_endpoint[self.T_NC_IE_PR],
-                    str(port),
-                    input_endpoint[self.T_NC_IE_LP]
+                    val[self.T_NC_IE_N],
+                    val[self.T_NC_IE_PR],
+                    unassigned_endpoints[idx],
+                    val[self.T_NC_IE_LP]
                 )
             )
         return network_config

@@ -243,6 +243,11 @@ class Service(ServiceManagementService):
     # ---------------------------------------- endpoint ---------------------------------------- #
 
     def get_assigned_endpoints(self, cloud_service_name):
+        """
+        Return a list of assigned endpoints of given cloud service
+        :param cloud_service_name:
+        :return: endpoints: a list of int
+        """
         properties = self.get_hosted_service_properties(cloud_service_name, True)
         endpoints = []
         for deployment in properties.deployments.deployments:
@@ -252,7 +257,7 @@ class Service(ServiceManagementService):
                         if configuration_set.input_endpoints is not None:
                             for input_endpoint in configuration_set.input_endpoints.input_endpoints:
                                 endpoints.append(input_endpoint.port)
-        return endpoints
+        return map(int, endpoints)
 
     def get_public_endpoint(self, cloud_service_name, endpoint_name):
         properties = self.get_hosted_service_properties(cloud_service_name, True)

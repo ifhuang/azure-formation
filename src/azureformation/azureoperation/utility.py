@@ -161,16 +161,22 @@ def commit_azure_endpoint(name, protocol, public_port, private_port, virtual_mac
     db_adapter.commit()
 
 
-def find_unassigned_endpoint(endpoint, assigned_endpoints):
+def find_unassigned_endpoints(endpoints, assigned_endpoints):
     """
-    Be careful data type of input parameters
-    :param endpoint: int
-    :param assigned_endpoints: list of str
-    :return:
+    Return a list of unassigned endpoints
+    :param endpoints: a list of int or str
+    :param assigned_endpoints: a list of int or str
+    :return: unassigned_endpoints: a list of int
     """
-    while str(endpoint) in assigned_endpoints:
-        endpoint = (endpoint + 1) % PORT_BOUND
-    return endpoint
+    endpoints = map(int, endpoints)
+    assigned_endpoints = map(int, assigned_endpoints)
+    unassigned_endpoints = []
+    for endpoint in endpoints:
+        while endpoint in assigned_endpoints:
+            endpoint = (endpoint + 1) % PORT_BOUND
+        assigned_endpoints.append(endpoint)
+        unassigned_endpoints.append(endpoint)
+    return unassigned_endpoints
 
 
 # --------------------------------------------- virtual environment ---------------------------------------------#
@@ -188,14 +194,15 @@ def commit_virtual_environment(provider, name, image, status, remote_provider, r
 
 
 # --------------------------------------------- network config ---------------------------------------------#
-def add_endpoint_to_network_config(network_config, public_endpoint, private_endpoint):
+def add_endpoint_to_network_config(network_config, public_endpoints, private_endpoints):
     """
     Return a new network config
     :param network_config:
-    :param public_endpoint:
-    :param private_endpoint:
+    :param public_endpoints: a list of int or str
+    :param private_endpoints: a list of int or str
     :return:
     """
+    endpoints = zip(map(str, public_endpoints), map(str, private_endpoints))
     new_network_config = ConfigurationSet()
     new_network_config.configuration_set_type = network_config.configuration_set_type
     if network_config.input_endpoints is not None:
@@ -206,27 +213,29 @@ def add_endpoint_to_network_config(network_config, public_endpoint, private_endp
                                               input_endpoint.port,
                                               input_endpoint.local_port)
             )
-    new_network_config.input_endpoints.input_endpoints.append(
-        ConfigurationSetInputEndpoint(ENDPOINT_PREFIX + str(public_endpoint),
-                                      ENDPOINT_PROTOCOL,
-                                      str(public_endpoint),
-                                      str(private_endpoint))
-    )
+    for endpoint in endpoints:
+        new_network_config.input_endpoints.input_endpoints.append(
+            ConfigurationSetInputEndpoint(ENDPOINT_PREFIX + endpoint[0],
+                                          ENDPOINT_PROTOCOL,
+                                          endpoint[0],
+                                          endpoint[1])
+        )
     return new_network_config
 
 
-def delete_endpoint_from_network_config(network_config, private_endpoint):
+def delete_endpoint_from_network_config(network_config, private_endpoints):
     """
     Return a new network config
     :param network_config:
-    :param private_endpoint:
+    :param private_endpoints: a list of int or str
     :return:
     """
+    private_endpoints = map(str, private_endpoints)
     new_network_config = ConfigurationSet()
     new_network_config.configuration_set_type = network_config.configuration_set_type
     if network_config.input_endpoints is not None:
         for input_endpoint in network_config.input_endpoints.input_endpoints:
-            if input_endpoint.local_port != str(private_endpoint):
+            if input_endpoint.local_port not in private_endpoints:
                 new_network_config.input_endpoints.input_endpoints.append(
                     ConfigurationSetInputEndpoint(input_endpoint.name,
                                                   input_endpoint.protocol,

@@ -75,7 +75,8 @@ class TestAzureFormation(unittest.TestCase):
     def test_create_virtual_machine(self):
         experiment = db_adapter.add_object_kwargs(Experiment)
         db_adapter.commit()
-        template_unit_json = json.load(file('../src/azureformation/resources/new-template-1.js'))['virtual_environments'][0]
+        template_unit_json = \
+            json.load(file('../src/azureformation/resources/new-template-1.js'))['virtual_environments'][0]
         storage = StorageAccount(self.service)
         sa = template_unit_json['storage_account']
         result = storage.create_storage_account(sa['service_name'],
@@ -98,15 +99,18 @@ class TestAzureFormation(unittest.TestCase):
         result = vm.create_virtual_machine(template_unit, experiment)
         self.assertTrue(result)
 
-    def test_assign_public_endpoint(self):
+    def test_assign_public_endpoints(self):
         endpoint = Endpoint(self.service)
-        result = endpoint.assign_public_endpoint('open-tech-service', 'production', 'open-tech-role-69', 84)
-        self.assertGreater(result, 0)
+        result = endpoint.assign_public_endpoints('open-tech-service', 'production', 'open-tech-role-69',
+                                                  [81, 82, 83, 84, 85, 3390, 3391, 3392, 3393])
+        self.assertIsNotNone(result)
 
-    def test_release_public_endpoint(self):
+    def test_release_public_endpoints(self):
         endpoint = Endpoint(self.service)
-        result = endpoint.release_public_endpoint('open-tech-service', 'production', 'open-tech-role-69', 84)
+        result = endpoint.release_public_endpoints('open-tech-service', 'production', 'open-tech-role-69',
+                                                   [81, 82, 83, 84, 85, 3390, 3391, 3392, 3393])
         self.assertTrue(result)
+
 
 if __name__ == '__main__':
     unittest.main()
