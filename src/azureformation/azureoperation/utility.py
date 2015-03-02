@@ -34,7 +34,6 @@ ENDPOINT_PROTOCOL = 'TCP'
 # virtual machine constants
 READY_ROLE = 'ReadyRole'
 
-
 # -------------------------------------------------- azure log --------------------------------------------------#
 def commit_azure_log(experiment, operation, status, note=None, code=None):
     db_adapter.add_object_kwargs(AzureLog,
@@ -150,6 +149,15 @@ def delete_azure_virtual_machine(cloud_service_name, deployment_name, virtual_ma
     db_adapter.commit()
 
 
+def update_azure_virtual_machine_status(cloud_service_name, deployment_name, virtual_machine_name, status):
+    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
+    dm = db_adapter.find_first_object(AzureDeployment, name=deployment_name, cloud_service=cs)
+    vm = db_adapter.find_first_object(AzureVirtualMachine, name=virtual_machine_name, deployment=dm)
+    vm.status = status
+    db_adapter.commit()
+    return vm
+
+
 # --------------------------------------------- azure endpoint ---------------------------------------------#
 def commit_azure_endpoint(name, protocol, public_port, private_port, virtual_machine):
     db_adapter.add_object_kwargs(AzureEndpoint,
@@ -191,6 +199,12 @@ def commit_virtual_environment(provider, name, image, status, remote_provider, r
                                       experiment=experiment)
     db_adapter.commit()
     return ve
+
+
+def update_virtual_environment_status(virtual_machine, status):
+    ve = virtual_machine.virtual_environment
+    ve.status = status
+    db_adapter.commit()
 
 
 # --------------------------------------------- network config ---------------------------------------------#

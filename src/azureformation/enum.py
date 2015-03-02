@@ -68,8 +68,8 @@ class ALOperation:
     DELETE = 'delete'
     DELETE_DEPLOYMENT = DELETE + ' ' + DEPLOYMENT
     DELETE_VIRTUAL_MACHINE = DELETE + ' ' + VIRTUAL_MACHINE
-    SHUTDOWN = 'shutdown'
-    SHUTDOWN_VIRTUAL_MACHINE = SHUTDOWN + ' ' + VIRTUAL_MACHINE
+    STOP = 'stop'
+    STOP_VIRTUAL_MACHINE = STOP + ' ' + VIRTUAL_MACHINE
 
 
 class ALStatus:
@@ -107,4 +107,5 @@ class AVMStatus:
     For status in db model AzureVirtualMachine
     """
     RUNNING = 'Running'
-    STOPPED = 'Stopped'
+    STOPPED_VM = 'StoppedVM'
+    STOPPED_DEALLOCATED = 'StoppedDeallocated'
