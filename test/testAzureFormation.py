@@ -133,6 +133,12 @@ class TestAzureFormation(unittest.TestCase):
                                          AVMStatus.STOPPED)
         self.assertFalse(result)
 
+    def test_start_virtual_machine(self):
+        vm = VirtualMachine(self.service)
+        result = vm.start_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7')
+        self.assertTrue(result)
+        result = vm.start_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7')
+        self.assertTrue(result)
 
 if __name__ == '__main__':
     unittest.main()

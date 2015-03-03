@@ -257,6 +257,9 @@ class Service(ServiceManagementService):
     def stop_virtual_machine(self, cloud_service_name, deployment_name, virtual_machine_name, type):
         return super(Service, self).shutdown_role(cloud_service_name, deployment_name, virtual_machine_name, type)
 
+    def start_virtual_machine(self, cloud_service_name, deployment_name, virtual_machine_name):
+        return super(Service, self).start_role(cloud_service_name, deployment_name, virtual_machine_name)
+
     # ---------------------------------------- endpoint ---------------------------------------- #
 
     def get_assigned_endpoints(self, cloud_service_name):

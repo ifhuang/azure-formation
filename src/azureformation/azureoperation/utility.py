@@ -164,6 +164,11 @@ def update_azure_virtual_machine_status(cloud_service_name, deployment_name, vir
     return vm
 
 
+def update_virtual_environment_private_ip(virtual_machine, private_ip):
+    virtual_machine.private_ip = private_ip
+    db_adapter.commit()
+
+
 # --------------------------------------------- azure endpoint ---------------------------------------------#
 def commit_azure_endpoint(name, protocol, public_port, private_port, virtual_machine):
     db_adapter.add_object_kwargs(AzureEndpoint,

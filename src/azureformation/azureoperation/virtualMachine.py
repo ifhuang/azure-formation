@@ -23,6 +23,7 @@ from src.azureformation.azureoperation.utility import (
     get_azure_virtual_machine_status,
     update_azure_virtual_machine_status,
     update_virtual_environment_status,
+    update_virtual_environment_private_ip,
 )
 from src.azureformation.enum import (
     DEPLOYMENT,
@@ -41,6 +42,8 @@ from src.azureformation.log import (
 import json
 
 
+# todo take care of resource check
+# todo support batch operations
 class VirtualMachine:
     """
     Virtual machine is azure virtual machine with its azure deployment
@@ -79,6 +82,16 @@ class VirtualMachine:
         '%s [%s] %s',
         '%s [%s] %s and by %s before',
         '%s [%s] %s but not by %s before',
+    ]
+    START_VIRTUAL_MACHINE_ERROR = [
+        '%s [%s] %s',
+        '%s [%s] wait for async fail',
+        '%s [%s] wait for virtual machine fail',
+    ]
+    START_VIRTUAL_MACHINE_INFO = [
+        '%s [%s] started',
+        '%s [%s] started by %s before',
+        '%s [%s] started but not by %s before',
     ]
     SIZE_CORE_MAP = {
         'a0': 1,
@@ -383,9 +396,60 @@ class VirtualMachine:
             log.debug(m)
         return True
 
-    # todo start virtual machine
-    def start_virtual_machine(self):
-        raise NotImplementedError
+    def start_virtual_machine(self, experiment, cloud_service_name, deployment_name, virtual_machine_name):
+        """
+        0. Prerequisites: a. virtual machine exist in both azure and database
+                          b. input parameters are correct
+        :param experiment:
+        :param cloud_service_name:
+        :param deployment_name:
+        :param virtual_machine_name:
+        :return:
+        """
+        commit_azure_log(experiment, ALOperation.START_VIRTUAL_MACHINE, ALStatus.START)
+        deployment = self.service.get_deployment_by_name(cloud_service_name, deployment_name)
+        status = self.service.get_virtual_machine_instance_status(deployment, virtual_machine_name)
+        if status == AVMStatus.READY_ROLE:
+            db_status = get_azure_virtual_machine_status(cloud_service_name, deployment_name, virtual_machine_name)
+            if db_status == status:
+                m = self.START_VIRTUAL_MACHINE_INFO[1] % (VIRTUAL_MACHINE, virtual_machine_name, AZURE_FORMATION)
+                commit_azure_log(experiment, ALOperation.START_VIRTUAL_MACHINE, ALStatus.END, m, 1)
+            else:
+                m = self.START_VIRTUAL_MACHINE_INFO[2] % (VIRTUAL_MACHINE, virtual_machine_name, AZURE_FORMATION)
+                self.__start_virtual_machine_helper(cloud_service_name, deployment_name, virtual_machine_name)
+                commit_azure_log(experiment, ALOperation.START_VIRTUAL_MACHINE, ALStatus.END, m, 2)
+            log.debug(m)
+        else:
+            try:
+                result = self.service.start_virtual_machine(cloud_service_name,
+                                                            deployment_name,
+                                                            virtual_machine_name)
+            except Exception as e:
+                m = self.START_VIRTUAL_MACHINE_ERROR[0] % (VIRTUAL_MACHINE, virtual_machine_name, e.message)
+                commit_azure_log(experiment, ALOperation.START_VIRTUAL_MACHINE, ALStatus.FAIL, 0)
+                log.error(e)
+                return False
+            # make sure async operation succeeds
+            if not self.service.wait_for_async(result.request_id, ASYNC_TICK, ASYNC_LOOP):
+                m = self.START_VIRTUAL_MACHINE_ERROR[1] % (VIRTUAL_MACHINE, virtual_machine_name)
+                commit_azure_log(experiment, ALOperation.START_VIRTUAL_MACHINE, ALStatus.FAIL, 1)
+                log.error(m)
+                return False
+            # make sure role is need status
+            if not self.service.wait_for_virtual_machine(cloud_service_name,
+                                                         deployment_name,
+                                                         virtual_machine_name,
+                                                         VIRTUAL_MACHINE_TICK,
+                                                         VIRTUAL_MACHINE_LOOP,
+                                                         AVMStatus.READY_ROLE):
+                m = self.START_VIRTUAL_MACHINE_ERROR[2] % (VIRTUAL_MACHINE, virtual_machine_name)
+                commit_azure_log(experiment, ALOperation.START_VIRTUAL_MACHINE, ALStatus.FAIL, m, 2)
+                log.error(m)
+                return False
+            self.__start_virtual_machine_helper(cloud_service_name, deployment_name, virtual_machine_name)
+            m = self.START_VIRTUAL_MACHINE_INFO[0] % (VIRTUAL_MACHINE, virtual_machine_name)
+            commit_azure_log(experiment, ALOperation.START_VIRTUAL_MACHINE, ALStatus.END, m, 0)
+        return True
 
     # todo delete virtual machine
     def delete_virtual_machine(self):
@@ -495,3 +559,25 @@ class VirtualMachine:
                                                               virtual_machine_name,
                                                               need_status)
         update_virtual_environment_status(virtual_machine, VEStatus.Stopped)
+
+    def __start_virtual_machine_helper(self,
+                                       cloud_service_name,
+                                       deployment_name,
+                                       virtual_machine_name):
+        """
+        Update status of azure virtual machine and virtual environment
+        Update private ip of azure virtual machine
+        :param cloud_service_name:
+        :param deployment_name:
+        :param virtual_machine_name:
+        :return:
+        """
+        virtual_machine = update_azure_virtual_machine_status(cloud_service_name,
+                                                              deployment_name,
+                                                              virtual_machine_name,
+                                                              AVMStatus.READY_ROLE)
+        update_virtual_environment_status(virtual_machine, VEStatus.Running)
+        private_ip = self.service.get_virtual_machine_private_ip(cloud_service_name,
+                                                                 deployment_name,
+                                                                 virtual_machine_name)
+        update_virtual_environment_private_ip(virtual_machine, private_ip)
