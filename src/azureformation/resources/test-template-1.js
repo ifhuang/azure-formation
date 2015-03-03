@@ -1,5 +1,5 @@
 {
-    "expr_name": "new template 1",
+    "expr_name": "test template 1",
     "description" : "a template consists of a list of virtual environments, and a virtual environment is a virtual machine with its storage account, container, cloud service and deployment",
     "virtual_environments": [
         {
@@ -13,16 +13,16 @@
             },
             "container" : "vhds",
             "cloud_service" : {
-                "service_name" : "open-tech-service",
+                "service_name" : "ot-service-test",
                 "label" : "cloud-service-label",
                 "location" : "China East"
             },
             "deployment" :{
-                "deployment_name" : "open-tech-deployment",
+                "deployment_name" : "ot-deployment-test",
                 "deployment_slot" : "production"
             },
             "label" : "role-label",
-            "role_name" : "open-tech-role",
+            "role_name" : "ot-role-test",
             "image" : {
                 "type" : "vm",
                 "name" : "openxml"

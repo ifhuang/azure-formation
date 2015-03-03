@@ -53,6 +53,7 @@ class TestAzureFormation(unittest.TestCase):
         c_count = subscription.get_available_core_count()
         self.assertGreaterEqual(c_count, 0)
 
+    # new storage account testppp need manual delete
     def test_create_storage_account(self):
         storage = StorageAccount(self.service)
         result = storage.create_storage_account(None, 'testpp', 'description', 'label', 'China East')
@@ -64,6 +65,7 @@ class TestAzureFormation(unittest.TestCase):
         result = storage.create_storage_account(None, 'testppp', 'description', 'label', 'China East')
         self.assertTrue(result)
 
+    # new cloud service open-xml-host-2 need manual delete
     def test_create_cloud_service(self):
         cloud = CloudService(self.service)
         result = cloud.create_cloud_service(None, 'open-xml-host', 'label', 'China East')
@@ -75,11 +77,13 @@ class TestAzureFormation(unittest.TestCase):
         result = cloud.create_cloud_service(None, 'open-xml-host-2', 'label', 'China East')
         self.assertTrue(result)
 
+    # new cloud service ot-service-test need manual delete
+    # new virtual machine ot-role-test-$(experiment.id) need manual delete
     def test_create_virtual_machine(self):
         experiment = db_adapter.add_object_kwargs(Experiment)
         db_adapter.commit()
         template_unit_json = \
-            json.load(file('../src/azureformation/resources/new-template-1.js'))['virtual_environments'][0]
+            json.load(file('../src/azureformation/resources/test-template-1.js'))['virtual_environments'][0]
         storage = StorageAccount(self.service)
         sa = template_unit_json['storage_account']
         result = storage.create_storage_account(experiment,
@@ -104,28 +108,28 @@ class TestAzureFormation(unittest.TestCase):
 
     def test_assign_public_endpoints(self):
         endpoint = Endpoint(self.service)
-        result = endpoint.assign_public_endpoints('open-tech-service', 'production', 'open-tech-role-69',
+        result = endpoint.assign_public_endpoints('ot-service-test', 'production', 'ot-role-test-7',
                                                   [81, 82, 83, 84, 85, 3390, 3391, 3392, 3393])
         self.assertIsNotNone(result)
 
     def test_release_public_endpoints(self):
         endpoint = Endpoint(self.service)
-        result = endpoint.release_public_endpoints('open-tech-service', 'production', 'open-tech-role-69',
+        result = endpoint.release_public_endpoints('ot-service-test', 'production', 'ot-role-test-7',
                                                    [81, 82, 83, 84, 85, 3390, 3391, 3392, 3393])
         self.assertTrue(result)
 
     def test_stop_virtual_machine(self):
         vm = VirtualMachine(self.service)
-        result = vm.stop_virtual_machine(None, 'open-tech-service', 'open-tech-deployment', 'open-tech-role-5',
+        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7',
                                          AVMStatus.STOPPED)
         self.assertTrue(result)
-        result = vm.stop_virtual_machine(None, 'open-tech-service', 'open-tech-deployment', 'open-tech-role-5',
+        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7',
                                          AVMStatus.STOPPED_DEALLOCATED)
         self.assertTrue(result)
-        result = vm.stop_virtual_machine(None, 'open-tech-service', 'open-tech-deployment', 'open-tech-role-5',
+        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7',
                                          AVMStatus.STOPPED_DEALLOCATED)
         self.assertTrue(result)
-        result = vm.stop_virtual_machine(None, 'open-tech-service', 'open-tech-deployment', 'open-tech-role-5',
+        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7',
                                          AVMStatus.STOPPED)
         self.assertFalse(result)
 

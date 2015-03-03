@@ -320,7 +320,7 @@ class VirtualMachine:
         deployment = self.service.get_deployment_by_name(cloud_service_name, deployment_name)
         now_status = self.service.get_virtual_machine_instance_status(deployment, virtual_machine_name)
         if need_status == AVMStatus.STOPPED_VM and now_status == AVMStatus.STOPPED_DEALLOCATED:
-            m = self.STOP_VIRTUAL_MACHINE_ERROR[1] % (VirtualMachine,
+            m = self.STOP_VIRTUAL_MACHINE_ERROR[1] % (VIRTUAL_MACHINE,
                                                       virtual_machine_name,
                                                       AVMStatus.STOPPED_VM,
                                                       AVMStatus.STOPPED_DEALLOCATED)
