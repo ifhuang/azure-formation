@@ -42,7 +42,7 @@ class CloudService:
         self.service = service
         self.subscription = Subscription(service)
 
-    def create_cloud_service(self, name, label, location, experiment):
+    def create_cloud_service(self, experiment, name, label, location):
         """
         If cloud service not exist in azure subscription, then create it
         Else reuse cloud service in azure subscription

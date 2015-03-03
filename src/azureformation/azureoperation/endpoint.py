@@ -1,13 +1,13 @@
 __author__ = 'Yifu Huang'
 
 from src.azureformation.azureoperation.utility import (
-    READY_ROLE,
     find_unassigned_endpoints,
     add_endpoint_to_network_config,
     delete_endpoint_from_network_config,
 )
 from src.azureformation.enum import (
     VIRTUAL_MACHINE,
+    AVMStatus,
 )
 from src.azureformation.log import (
     log,
@@ -67,7 +67,7 @@ class Endpoint:
                                                      virtual_machine_name,
                                                      self.TICK,
                                                      self.LOOP,
-                                                     READY_ROLE):
+                                                     AVMStatus.READY_ROLE):
             log.error('%s [%s] not ready' % (VIRTUAL_MACHINE, virtual_machine_name))
             return self.ERROR_RESULT
         return public_endpoints
@@ -106,7 +106,7 @@ class Endpoint:
                                                      virtual_machine_name,
                                                      self.TICK,
                                                      self.LOOP,
-                                                     READY_ROLE):
+                                                     AVMStatus.READY_ROLE):
             log.error('%s [%s] not ready' % (VIRTUAL_MACHINE, virtual_machine_name))
             return False
         return True

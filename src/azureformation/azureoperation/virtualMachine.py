@@ -11,7 +11,6 @@ from src.azureformation.azureoperation.utility import (
     DEPLOYMENT_LOOP,
     VIRTUAL_MACHINE_TICK,
     VIRTUAL_MACHINE_LOOP,
-    READY_ROLE,
     commit_azure_log,
     commit_azure_deployment,
     commit_azure_virtual_machine,
@@ -21,6 +20,9 @@ from src.azureformation.azureoperation.utility import (
     contain_azure_virtual_machine,
     delete_azure_deployment,
     delete_azure_virtual_machine,
+    get_azure_virtual_machine_status,
+    update_azure_virtual_machine_status,
+    update_virtual_environment_status,
 )
 from src.azureformation.enum import (
     DEPLOYMENT,
@@ -69,13 +71,14 @@ class VirtualMachine:
     ]
     STOP_VIRTUAL_MACHINE_ERROR = [
         '%s [%s] %s',
-        '%s [%s] wrong status %s',
+        '%s [%s] need status %s but now status %s',
         '%s [%s] wait for async fail',
         '%s [%s] wait for virtual machine fail',
     ]
     STOP_VIRTUAL_MACHINE_INFO = [
         '%s [%s] %s',
-
+        '%s [%s] %s and by %s before',
+        '%s [%s] %s but not by %s before',
     ]
     SIZE_CORE_MAP = {
         'a0': 1,
@@ -126,9 +129,10 @@ class VirtualMachine:
         self.service = service
         self.subscription = Subscription(service)
 
-    def create_virtual_machine(self, template_unit, experiment):
+    def create_virtual_machine(self, experiment, template_unit):
         """
-        0. Prerequisites: storage account exist; cloud service exist; template unit is correct
+        0. Prerequisites: a. storage account and cloud service exist in both azure and database;
+                          b. input parameters are correct;
         1. If deployment not exist in azure subscription, then create virtual machine with deployment
            Else reuse deployment in azure subscription
         2. If virtual machine not exist in azure subscription, then add virtual machine to deployment
@@ -211,7 +215,7 @@ class VirtualMachine:
                                                              virtual_machine_name,
                                                              VIRTUAL_MACHINE_TICK,
                                                              VIRTUAL_MACHINE_LOOP,
-                                                             READY_ROLE):
+                                                             AVMStatus.READY_ROLE):
                     m = self.CREATE_VIRTUAL_MACHINE_ERROR[3] % (VIRTUAL_MACHINE, virtual_machine_name)
                     commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 3)
                     log.error(m)
@@ -283,7 +287,7 @@ class VirtualMachine:
                                                          virtual_machine_name,
                                                          VIRTUAL_MACHINE_TICK,
                                                          VIRTUAL_MACHINE_LOOP,
-                                                         READY_ROLE):
+                                                         AVMStatus.READY_ROLE):
                 m = self.CREATE_VIRTUAL_MACHINE_ERROR[3] % (VIRTUAL_MACHINE, virtual_machine_name)
                 commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 3)
                 log.error(m)
@@ -299,59 +303,84 @@ class VirtualMachine:
                     return False
         return True
 
-    def stop_virtual_machine(self, cloud_service_name, deployment_name, virtual_machine_name, type, experiment):
+    def stop_virtual_machine(self, experiment, cloud_service_name, deployment_name, virtual_machine_name, action):
         """
-        0. Prerequisites: virtual machine exist in both azure subscription and database
+        0. Prerequisites: a. virtual machine exist in both azure and database
+                          b. input parameters are correct
+        :param experiment:
         :param cloud_service_name:
         :param deployment_name:
         :param virtual_machine_name:
-        :param type: STOPPED_VM or STOPPED_DEALLOCATED
-        :param experiment:
+        :param action: AVMStatus.STOPPED or AVMStatus.STOPPED_DEALLOCATED
         :return:
         """
         commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.START)
+        # need_status: AVMStatus.STOPPED_VM or AVMStatus.STOPPED_DEALLOCATED
+        need_status = AVMStatus.STOPPED_VM if action == AVMStatus.STOPPED else AVMStatus.STOPPED_DEALLOCATED
         deployment = self.service.get_deployment_by_name(cloud_service_name, deployment_name)
-        status = self.service.get_virtual_machine_instance_status(deployment, virtual_machine_name)
-        # make sure vm status is not wrong
-        if status is None or status in (AVMStatus.STOPPED_VM, AVMStatus.STOPPED_DEALLOCATED):
-            m = self.STOP_VIRTUAL_MACHINE_ERROR[1] % (VIRTUAL_MACHINE, virtual_machine_name, status)
-            commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.FAIL, 1)
+        now_status = self.service.get_virtual_machine_instance_status(deployment, virtual_machine_name)
+        if need_status == AVMStatus.STOPPED_VM and now_status == AVMStatus.STOPPED_DEALLOCATED:
+            m = self.STOP_VIRTUAL_MACHINE_ERROR[1] % (VirtualMachine,
+                                                      virtual_machine_name,
+                                                      AVMStatus.STOPPED_VM,
+                                                      AVMStatus.STOPPED_DEALLOCATED)
+            commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.FAIL, m, 1)
             log.error(m)
             return False
-        try:
-            result = self.service.stop_virtual_machine(cloud_service_name,
-                                                       deployment_name,
-                                                       virtual_machine_name,
-                                                       type)
-        except Exception as e:
-            m = self.STOP_VIRTUAL_MACHINE_ERROR[0] % (VIRTUAL_MACHINE, virtual_machine_name, e.message)
-            commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.FAIL, 0)
-            log.error(e)
-            return False
-        # make sure async operation succeeds
-        if not self.service.wait_for_async(result.request_id, ASYNC_TICK, ASYNC_LOOP):
-            m = self.STOP_VIRTUAL_MACHINE_ERROR[2] % (VIRTUAL_MACHINE, virtual_machine_name)
-            commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.FAIL, 2)
-            log.error(m)
-            return False
-        # make sure role is ready
-        if not self.service.wait_for_virtual_machine(cloud_service_name,
-                                                     deployment_name,
-                                                     virtual_machine_name,
-                                                     VIRTUAL_MACHINE_TICK,
-                                                     VIRTUAL_MACHINE_LOOP,
-                                                     type):
-            m = self.STOP_VIRTUAL_MACHINE_ERROR[3] % (VIRTUAL_MACHINE, virtual_machine_name)
-            commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 3)
-            log.error(m)
-            return False
-        virtual_machine = update_azure_virtual_machine_status(cloud_service_name,
-                                                              deployment_name,
-                                                              virtual_machine_name,
-                                                              type)
-        m = self.STOP_VIRTUAL_MACHINE_INFO[0] % (VIRTUAL_MACHINE, virtual_machine_name, type)
-        commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.END, m, 0)
-        log.debug(m)
+        elif need_status == now_status:
+            db_status = get_azure_virtual_machine_status(cloud_service_name, deployment_name, virtual_machine_name)
+            if db_status == need_status:
+                m = self.STOP_VIRTUAL_MACHINE_INFO[1] % (VIRTUAL_MACHINE,
+                                                         virtual_machine_name,
+                                                         need_status,
+                                                         AZURE_FORMATION)
+                commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.END, m, 1)
+            else:
+                m = self.STOP_VIRTUAL_MACHINE_INFO[2] % (VIRTUAL_MACHINE,
+                                                         virtual_machine_name,
+                                                         need_status,
+                                                         AZURE_FORMATION)
+                self.__stop_virtual_machine_helper(cloud_service_name,
+                                                   deployment_name,
+                                                   virtual_machine_name,
+                                                   need_status)
+                commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.END, m, 2)
+            log.debug(m)
+        else:
+            try:
+                result = self.service.stop_virtual_machine(cloud_service_name,
+                                                           deployment_name,
+                                                           virtual_machine_name,
+                                                           action)
+            except Exception as e:
+                m = self.STOP_VIRTUAL_MACHINE_ERROR[0] % (VIRTUAL_MACHINE, virtual_machine_name, e.message)
+                commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.FAIL, 0)
+                log.error(e)
+                return False
+            # make sure async operation succeeds
+            if not self.service.wait_for_async(result.request_id, ASYNC_TICK, ASYNC_LOOP):
+                m = self.STOP_VIRTUAL_MACHINE_ERROR[2] % (VIRTUAL_MACHINE, virtual_machine_name)
+                commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.FAIL, 2)
+                log.error(m)
+                return False
+            # make sure role is need status
+            if not self.service.wait_for_virtual_machine(cloud_service_name,
+                                                         deployment_name,
+                                                         virtual_machine_name,
+                                                         VIRTUAL_MACHINE_TICK,
+                                                         VIRTUAL_MACHINE_LOOP,
+                                                         need_status):
+                m = self.STOP_VIRTUAL_MACHINE_ERROR[3] % (VIRTUAL_MACHINE, virtual_machine_name)
+                commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.FAIL, m, 3)
+                log.error(m)
+                return False
+            self.__stop_virtual_machine_helper(cloud_service_name,
+                                               deployment_name,
+                                               virtual_machine_name,
+                                               need_status)
+            m = self.STOP_VIRTUAL_MACHINE_INFO[0] % (VIRTUAL_MACHINE, virtual_machine_name, action)
+            commit_azure_log(experiment, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.END, m, 0)
+            log.debug(m)
         return True
 
     # todo start virtual machine
@@ -400,7 +429,7 @@ class VirtualMachine:
                                                          virtual_machine_name,
                                                          VIRTUAL_MACHINE_TICK,
                                                          VIRTUAL_MACHINE_LOOP,
-                                                         READY_ROLE):
+                                                         AVMStatus.READY_ROLE):
                 m = self.CREATE_VIRTUAL_MACHINE_ERROR[5] % (VIRTUAL_MACHINE, virtual_machine_name)
                 commit_azure_log(experiment, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.FAIL, m, 5)
                 log.error(m)
@@ -429,7 +458,7 @@ class VirtualMachine:
                                                                  virtual_machine_name)
         virtual_machine = commit_azure_virtual_machine(virtual_machine_name,
                                                        virtual_machine_label,
-                                                       AVMStatus.RUNNING,
+                                                       AVMStatus.READY_ROLE,
                                                        dns,
                                                        public_ip,
                                                        private_ip,
@@ -448,3 +477,21 @@ class VirtualMachine:
         log.debug(m)
         return True
 
+    def __stop_virtual_machine_helper(self,
+                                      cloud_service_name,
+                                      deployment_name,
+                                      virtual_machine_name,
+                                      need_status):
+        """
+        Update status of azure virtual machine and virtual environment
+        :param cloud_service_name:
+        :param deployment_name:
+        :param virtual_machine_name:
+        :param need_status:
+        :return:
+        """
+        virtual_machine = update_azure_virtual_machine_status(cloud_service_name,
+                                                              deployment_name,
+                                                              virtual_machine_name,
+                                                              need_status)
+        update_virtual_environment_status(virtual_machine, VEStatus.Stopped)

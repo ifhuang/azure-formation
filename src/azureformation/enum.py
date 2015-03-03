@@ -106,6 +106,8 @@ class AVMStatus:
     """
     For status in db model AzureVirtualMachine
     """
-    RUNNING = 'Running'
+    READY_ROLE = 'ReadyRole'
     STOPPED_VM = 'StoppedVM'
+    STOPPED = 'Stopped'  # STOPPED is only used for 'type' input parameter of stop_virtual_machine in VirtualMachine
     STOPPED_DEALLOCATED = 'StoppedDeallocated'
+

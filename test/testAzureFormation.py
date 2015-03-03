@@ -27,6 +27,9 @@ from src.azureformation.database import (
 from src.azureformation.database.models import (
     Experiment,
 )
+from src.azureformation.enum import (
+    AVMStatus
+)
 from src.azureformation.credentials import (
     SUBSCRIPTION_ID,
     PEM_CERTIFICATE,
@@ -52,24 +55,24 @@ class TestAzureFormation(unittest.TestCase):
 
     def test_create_storage_account(self):
         storage = StorageAccount(self.service)
-        result = storage.create_storage_account('testpp', 'description', 'label', 'China East', None)
+        result = storage.create_storage_account(None, 'testpp', 'description', 'label', 'China East')
         self.assertTrue(result)
-        result = storage.create_storage_account('testpp', 'description', 'label', 'China East', None)
+        result = storage.create_storage_account(None, 'testpp', 'description', 'label', 'China East')
         self.assertTrue(result)
-        result = storage.create_storage_account('ossvhds', 'description', 'label', 'China East', None)
+        result = storage.create_storage_account(None, 'ossvhds', 'description', 'label', 'China East')
         self.assertFalse(result)
-        result = storage.create_storage_account('testppp', 'description', 'label', 'China East', None)
+        result = storage.create_storage_account(None, 'testppp', 'description', 'label', 'China East')
         self.assertTrue(result)
 
     def test_create_cloud_service(self):
         cloud = CloudService(self.service)
-        result = cloud.create_cloud_service('open-xml-host', 'label', 'China East', None)
+        result = cloud.create_cloud_service(None, 'open-xml-host', 'label', 'China East')
         self.assertTrue(result)
-        result = cloud.create_cloud_service('open-xml-host', 'label', 'China East', None)
+        result = cloud.create_cloud_service(None, 'open-xml-host', 'label', 'China East')
         self.assertTrue(result)
-        result = cloud.create_cloud_service('open-hackathon', 'label', 'China East', None)
+        result = cloud.create_cloud_service(None, 'open-hackathon', 'label', 'China East')
         self.assertFalse(result)
-        result = cloud.create_cloud_service('open-xml-host-2', 'label', 'China East', None)
+        result = cloud.create_cloud_service(None, 'open-xml-host-2', 'label', 'China East')
         self.assertTrue(result)
 
     def test_create_virtual_machine(self):
@@ -79,24 +82,24 @@ class TestAzureFormation(unittest.TestCase):
             json.load(file('../src/azureformation/resources/new-template-1.js'))['virtual_environments'][0]
         storage = StorageAccount(self.service)
         sa = template_unit_json['storage_account']
-        result = storage.create_storage_account(sa['service_name'],
+        result = storage.create_storage_account(experiment,
+                                                sa['service_name'],
                                                 sa['description'],
                                                 sa['label'],
-                                                sa['location'],
-                                                experiment)
+                                                sa['location'])
         self.assertTrue(result)
         cloud = CloudService(self.service)
         cs = template_unit_json['cloud_service']
-        result = cloud.create_cloud_service(cs['service_name'],
+        result = cloud.create_cloud_service(experiment,
+                                            cs['service_name'],
                                             cs['label'],
-                                            cs['location'],
-                                            experiment)
+                                            cs['location'])
         self.assertTrue(result)
         vm = VirtualMachine(self.service)
         template_unit = TemplateUnit(template_unit_json)
-        result = vm.create_virtual_machine(template_unit, experiment)
+        result = vm.create_virtual_machine(experiment, template_unit)
         self.assertTrue(result)
-        result = vm.create_virtual_machine(template_unit, experiment)
+        result = vm.create_virtual_machine(experiment, template_unit)
         self.assertTrue(result)
 
     def test_assign_public_endpoints(self):
@@ -110,6 +113,21 @@ class TestAzureFormation(unittest.TestCase):
         result = endpoint.release_public_endpoints('open-tech-service', 'production', 'open-tech-role-69',
                                                    [81, 82, 83, 84, 85, 3390, 3391, 3392, 3393])
         self.assertTrue(result)
+
+    def test_stop_virtual_machine(self):
+        vm = VirtualMachine(self.service)
+        result = vm.stop_virtual_machine(None, 'open-tech-service', 'open-tech-deployment', 'open-tech-role-5',
+                                         AVMStatus.STOPPED)
+        self.assertTrue(result)
+        result = vm.stop_virtual_machine(None, 'open-tech-service', 'open-tech-deployment', 'open-tech-role-5',
+                                         AVMStatus.STOPPED_DEALLOCATED)
+        self.assertTrue(result)
+        result = vm.stop_virtual_machine(None, 'open-tech-service', 'open-tech-deployment', 'open-tech-role-5',
+                                         AVMStatus.STOPPED_DEALLOCATED)
+        self.assertTrue(result)
+        result = vm.stop_virtual_machine(None, 'open-tech-service', 'open-tech-deployment', 'open-tech-role-5',
+                                         AVMStatus.STOPPED)
+        self.assertFalse(result)
 
 
 if __name__ == '__main__':

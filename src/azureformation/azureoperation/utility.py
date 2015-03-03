@@ -31,8 +31,7 @@ PORT_BOUND = 65536
 # endpoint constants
 ENDPOINT_PREFIX = 'AUTO-'
 ENDPOINT_PROTOCOL = 'TCP'
-# virtual machine constants
-READY_ROLE = 'ReadyRole'
+
 
 # -------------------------------------------------- azure log --------------------------------------------------#
 def commit_azure_log(experiment, operation, status, note=None, code=None):
@@ -147,6 +146,13 @@ def delete_azure_virtual_machine(cloud_service_name, deployment_name, virtual_ma
                                   name=virtual_machine_name,
                                   deployment_id=dm.id)
     db_adapter.commit()
+
+
+def get_azure_virtual_machine_status(cloud_service_name, deployment_name, virtual_machine_name):
+    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
+    dm = db_adapter.find_first_object(AzureDeployment, name=deployment_name, cloud_service=cs)
+    vm = db_adapter.find_first_object(AzureVirtualMachine, name=virtual_machine_name, deployment=dm)
+    return vm.status
 
 
 def update_azure_virtual_machine_status(cloud_service_name, deployment_name, virtual_machine_name, status):

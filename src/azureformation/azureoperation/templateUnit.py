@@ -159,7 +159,7 @@ class TemplateUnit:
         assigned_endpoints = service.get_assigned_endpoints(cs[self.T_CS_SN])
         endpoints = map(lambda i: i[self.T_NC_IE_LP], input_endpoints)
         unassigned_endpoints = map(str, find_unassigned_endpoints(endpoints, assigned_endpoints))
-        map(lambda i, u: i.update({self.T_NC_IE_PO: u}), zip(input_endpoints, unassigned_endpoints))
+        map(lambda (i, u): i.update({self.T_NC_IE_PO: u}), zip(input_endpoints, unassigned_endpoints))
         for input_endpoint in input_endpoints:
             network_config.input_endpoints.input_endpoints.append(
                 ConfigurationSetInputEndpoint(
