@@ -45,12 +45,16 @@ class StorageAccount:
         self.service = service
         self.subscription = Subscription(service)
 
-    def create_storage_account(self, experiment, name, description, label, location):
+    def create_storage_account(self, experiment, template_unit):
         """
         If storage account not exist in azure subscription, then create it
         Else reuse storage account in azure subscription
         :return:
         """
+        name = template_unit.get_storage_account_name()
+        description = template_unit.get_storage_account_description()
+        label = template_unit.get_storage_account_label()
+        location = template_unit.get_storage_account_location()
         commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.START)
         # avoid duplicate storage account in azure subscription
         if not self.service.storage_account_exists(name):

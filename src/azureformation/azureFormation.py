@@ -33,4 +33,6 @@ class AzureFormation():
     def create(self, experiment):
         template_framework = TemplateFramework(experiment)
         for template_unit in template_framework.get_template_units():
-            pass
+            self.storage_account.create_storage_account(experiment, template_unit)
+            self.cloud_service.create_cloud_service(experiment, template_unit)
+            self.virtual_machine.create_virtual_machine(experiment, template_unit)

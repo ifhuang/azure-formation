@@ -42,12 +42,15 @@ class CloudService:
         self.service = service
         self.subscription = Subscription(service)
 
-    def create_cloud_service(self, experiment, name, label, location):
+    def create_cloud_service(self, experiment, template_unit):
         """
         If cloud service not exist in azure subscription, then create it
         Else reuse cloud service in azure subscription
         :return:
         """
+        name = template_unit.get_cloud_service_name()
+        label = template_unit.get_cloud_service_label()
+        location = template_unit.get_cloud_service_location()
         commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.START)
         # avoid duplicate cloud service in azure subscription
         if not self.service.cloud_service_exists(name):
