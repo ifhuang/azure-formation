@@ -37,7 +37,7 @@ a = db_adapter.add_object_kwargs(AzureKey,
 db_adapter.commit()
 
 # associate hackathon with azure key
-db_adapter.add_object_kwargs(HackathonAzureKey, hackathon_id=h.id, azure_key_id=a.id)
+db_adapter.add_object_kwargs(HackathonAzureKey, hackathon=h, azure_key=a)
 db_adapter.commit()
 
 # load template

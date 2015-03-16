@@ -171,8 +171,26 @@ class TemplateUnit:
             )
         return network_config
 
+    def get_storage_account_name(self):
+        return self.virtual_environment[self.T_SA][self.T_SA_SN]
+
+    def get_storage_account_description(self):
+        return self.virtual_environment[self.T_SA][self.T_SA_D]
+
+    def get_storage_account_label(self):
+        return self.virtual_environment[self.T_SA][self.T_SA_LA]
+
+    def get_storage_account_location(self):
+        return self.virtual_environment[self.T_SA][self.T_SA_LO]
+
     def get_cloud_service_name(self):
         return self.virtual_environment[self.T_CS][self.T_CS_SN]
+
+    def get_cloud_service_label(self):
+        return self.virtual_environment[self.T_CS][self.T_CS_LA]
+
+    def get_cloud_service_location(self):
+        return self.virtual_environment[self.T_CS][self.T_CS_LO]
 
     def get_deployment_slot(self):
         return self.virtual_environment[self.T_D][self.T_D_DS]

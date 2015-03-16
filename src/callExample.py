@@ -31,12 +31,16 @@ s = Service(a.subscription_id, a.pem_url, a.management_host)
 af = AzureFormation(s)
 e = db_adapter.add_object_kwargs(Experiment,
                                  status=EStatus.Init,
-                                 template_id=t.id,
-                                 user_id=u.id,
-                                 hackathon_id=h.id)
+                                 template=t,
+                                 user=u,
+                                 hackathon=h)
 db_adapter.commit()
 
 # start
-db_adapter.update_object_kwargs(e, status=EStatus.Starting)
+db_adapter.update_object(e, status=EStatus.Starting)
 db_adapter.commit()
 af.create(e)
+
+# end
+db_adapter.update_object(e, status=EStatus.Running)
+db_adapter.commit()
