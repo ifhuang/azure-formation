@@ -11,6 +11,10 @@ from src.azureformation.database.models import (
     AzureVirtualMachine,
     AzureEndpoint,
     VirtualEnvironment,
+    Template,
+)
+from src.azureformation.functions import (
+    load_template,
 )
 from azure.servicemanagement import (
     ConfigurationSet,
@@ -57,11 +61,11 @@ def commit_azure_storage_account(name, description, label, location, status, exp
 
 
 def contain_azure_storage_account(name):
-    return db_adapter.count(AzureStorageAccount, name=name) != 0
+    return db_adapter.count_by(AzureStorageAccount, name=name) != 0
 
 
 def delete_azure_storage_account(name):
-    db_adapter.delete_all_objects(AzureStorageAccount, name=name)
+    db_adapter.delete_all_objects_by(AzureStorageAccount, name=name)
     db_adapter.commit()
 
 
@@ -77,17 +81,17 @@ def commit_azure_cloud_service(name, label, location, status, experiment):
 
 
 def contain_azure_cloud_service(name):
-    return db_adapter.count(AzureCloudService, name=name) != 0
+    return db_adapter.count_by(AzureCloudService, name=name) != 0
 
 
 def delete_azure_cloud_service(name):
-    db_adapter.delete_all_objects(AzureCloudService, name=name)
+    db_adapter.delete_all_objects_by(AzureCloudService, name=name)
     db_adapter.commit()
 
 
 # --------------------------------------------- azure deployment ---------------------------------------------#
 def commit_azure_deployment(name, slot, status, cloud_service_name, experiment):
-    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
+    cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
     db_adapter.add_object_kwargs(AzureDeployment,
                                  name=name,
                                  slot=slot,
@@ -98,25 +102,25 @@ def commit_azure_deployment(name, slot, status, cloud_service_name, experiment):
 
 
 def contain_azure_deployment(cloud_service_name, deployment_slot):
-    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
-    return db_adapter.count(AzureDeployment,
-                            slot=deployment_slot,
-                            cloud_service_id=cs.id) != 0
+    cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
+    return db_adapter.count_by(AzureDeployment,
+                               slot=deployment_slot,
+                               cloud_service_id=cs.id) != 0
 
 
 def delete_azure_deployment(cloud_service_name, deployment_slot):
-    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
-    db_adapter.delete_all_objects(AzureDeployment,
-                                  slot=deployment_slot,
-                                  cloud_service_id=cs.id)
+    cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
+    db_adapter.delete_all_objects_by(AzureDeployment,
+                                     slot=deployment_slot,
+                                     cloud_service_id=cs.id)
     db_adapter.commit()
 
 
 # --------------------------------------------- azure virtual machine ---------------------------------------------#
 def commit_azure_virtual_machine(name, label, status, dns, public_ip, private_ip,
                                  cloud_service_name, deployment_name, experiment, virtual_environment):
-    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
-    dm = db_adapter.find_first_object(AzureDeployment, name=deployment_name, cloud_service=cs)
+    cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
+    dm = db_adapter.find_first_object_by(AzureDeployment, name=deployment_name, cloud_service=cs)
     vm = db_adapter.add_object_kwargs(AzureVirtualMachine,
                                       name=name,
                                       label=label,
@@ -132,33 +136,33 @@ def commit_azure_virtual_machine(name, label, status, dns, public_ip, private_ip
 
 
 def contain_azure_virtual_machine(cloud_service_name, deployment_name, virtual_machine_name):
-    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
-    dm = db_adapter.find_first_object(AzureDeployment, name=deployment_name, cloud_service=cs)
-    return db_adapter.count(AzureVirtualMachine,
-                            name=virtual_machine_name,
-                            deployment_id=dm.id) != 0
+    cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
+    dm = db_adapter.find_first_object_by(AzureDeployment, name=deployment_name, cloud_service=cs)
+    return db_adapter.count_by(AzureVirtualMachine,
+                               name=virtual_machine_name,
+                               deployment_id=dm.id) != 0
 
 
 def delete_azure_virtual_machine(cloud_service_name, deployment_name, virtual_machine_name):
-    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
-    dm = db_adapter.find_first_object(AzureDeployment, name=deployment_name, cloud_service=cs)
-    db_adapter.delete_all_objects(AzureVirtualMachine,
-                                  name=virtual_machine_name,
-                                  deployment_id=dm.id)
+    cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
+    dm = db_adapter.find_first_object_by(AzureDeployment, name=deployment_name, cloud_service=cs)
+    db_adapter.delete_all_objects_by(AzureVirtualMachine,
+                                     name=virtual_machine_name,
+                                     deployment_id=dm.id)
     db_adapter.commit()
 
 
 def get_azure_virtual_machine_status(cloud_service_name, deployment_name, virtual_machine_name):
-    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
-    dm = db_adapter.find_first_object(AzureDeployment, name=deployment_name, cloud_service=cs)
-    vm = db_adapter.find_first_object(AzureVirtualMachine, name=virtual_machine_name, deployment=dm)
+    cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
+    dm = db_adapter.find_first_object_by(AzureDeployment, name=deployment_name, cloud_service=cs)
+    vm = db_adapter.find_first_object_by(AzureVirtualMachine, name=virtual_machine_name, deployment=dm)
     return vm.status
 
 
 def update_azure_virtual_machine_status(cloud_service_name, deployment_name, virtual_machine_name, status):
-    cs = db_adapter.find_first_object(AzureCloudService, name=cloud_service_name)
-    dm = db_adapter.find_first_object(AzureDeployment, name=deployment_name, cloud_service=cs)
-    vm = db_adapter.find_first_object(AzureVirtualMachine, name=virtual_machine_name, deployment=dm)
+    cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
+    dm = db_adapter.find_first_object_by(AzureDeployment, name=deployment_name, cloud_service=cs)
+    vm = db_adapter.find_first_object_by(AzureVirtualMachine, name=virtual_machine_name, deployment=dm)
     vm.status = status
     db_adapter.commit()
     return vm
@@ -268,3 +272,9 @@ def delete_endpoint_from_network_config(network_config, private_endpoints):
                                                   input_endpoint.local_port)
                 )
     return new_network_config
+
+
+# --------------------------------------------- template ---------------------------------------------#
+def load_template_from_experiment(experiment):
+    t = db_adapter.get_object(Template, experiment.template_id)
+    return load_template(t.url)

@@ -108,36 +108,36 @@ class TestAzureFormation(unittest.TestCase):
 
     def test_assign_public_endpoints(self):
         endpoint = Endpoint(self.service)
-        result = endpoint.assign_public_endpoints('ot-service-test', 'production', 'ot-role-test-7',
+        result = endpoint.assign_public_endpoints('ot-service-test', 'production', 'ot-role-test-13',
                                                   [81, 82, 83, 84, 85, 3390, 3391, 3392, 3393])
         self.assertIsNotNone(result)
 
     def test_release_public_endpoints(self):
         endpoint = Endpoint(self.service)
-        result = endpoint.release_public_endpoints('ot-service-test', 'production', 'ot-role-test-7',
+        result = endpoint.release_public_endpoints('ot-service-test', 'production', 'ot-role-test-13',
                                                    [81, 82, 83, 84, 85, 3390, 3391, 3392, 3393])
         self.assertTrue(result)
 
     def test_stop_virtual_machine(self):
         vm = VirtualMachine(self.service)
-        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7',
+        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-13',
                                          AVMStatus.STOPPED)
         self.assertTrue(result)
-        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7',
+        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-13',
                                          AVMStatus.STOPPED_DEALLOCATED)
         self.assertTrue(result)
-        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7',
+        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-13',
                                          AVMStatus.STOPPED_DEALLOCATED)
         self.assertTrue(result)
-        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7',
+        result = vm.stop_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-13',
                                          AVMStatus.STOPPED)
         self.assertFalse(result)
 
     def test_start_virtual_machine(self):
         vm = VirtualMachine(self.service)
-        result = vm.start_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7')
+        result = vm.start_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-13')
         self.assertTrue(result)
-        result = vm.start_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-7')
+        result = vm.start_virtual_machine(None, 'ot-service-test', 'ot-deployment-test', 'ot-role-test-13')
         self.assertTrue(result)
 
 if __name__ == '__main__':

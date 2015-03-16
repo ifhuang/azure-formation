@@ -7,14 +7,6 @@ DEPLOYMENT = 'deployment'
 VIRTUAL_MACHINE = 'virtual machine'
 
 
-class AKOwner:
-    """
-    For owner in db model AzureKey
-    """
-    User = 0
-    Hackathon = 1
-
-
 class EStatus:
     """
     For status in db model Experiment
