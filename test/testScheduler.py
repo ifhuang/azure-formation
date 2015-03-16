@@ -8,16 +8,17 @@ from datetime import (
     timedelta,
 )
 import time
+import importlib
 
 
-def alarm(t):
-    print('Alarm! This alarm was scheduled at %s.' % t)
-    return {
-        "key": "val"
-    }
+def alarm(mdl, cls, func):
+    mdl = importlib.import_module(mdl)
+    cls = getattr(mdl, cls)
+    func = getattr(cls('a', 'b', 'c'), func)
+    func()
 
 alarm_time = datetime.now() + timedelta(seconds=10)
-scheduler.add_job(alarm, 'date', run_date=alarm_time, args=[datetime.now()])
+scheduler.add_job(alarm, 'date', run_date=alarm_time, args=['test.testClass', 'Pao', 'funcA'])
 while True:
     print 'main'
     time.sleep(10)
