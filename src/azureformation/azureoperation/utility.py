@@ -16,11 +16,13 @@ from src.azureformation.database.models import (
 from src.azureformation.functions import (
     load_template,
 )
+from src.azureformation.azureoperation.service import (
+    Service,
+)
 from azure.servicemanagement import (
     ConfigurationSet,
     ConfigurationSetInputEndpoint,
 )
-
 # -------------------------------------------------- constants --------------------------------------------------#
 # project name
 AZURE_FORMATION = 'Azure Formation'
@@ -35,6 +37,12 @@ PORT_BOUND = 65536
 # endpoint constants
 ENDPOINT_PREFIX = 'AUTO-'
 ENDPOINT_PROTOCOL = 'TCP'
+# module name, class name and function name
+CALL = [
+    [Service.__module__, Service.__name__, Service.query_async_operation.__name__],
+    [Service.__module__, Service.__name__, Service.query_deployment_status.__name__],
+    [Service.__module__, Service.__name__, Service.query_virtual_machine_status.__name__],
+]
 
 
 # -------------------------------------------------- azure log --------------------------------------------------#

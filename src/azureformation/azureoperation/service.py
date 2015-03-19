@@ -6,8 +6,24 @@ from src.azureformation.enum import (
 from src.azureformation.log import (
     log,
 )
+from src.azureformation.functions import (
+    call,
+)
+from src.azureformation.azureoperation.utility import (
+    ASYNC_TICK,
+    DEPLOYMENT_TICK,
+    VIRTUAL_MACHINE_TICK,
+    CALL,
+)
+from src.azureformation.scheduler import (
+    scheduler,
+)
 from azure.servicemanagement import (
     ServiceManagementService,
+)
+from datetime import (
+    datetime,
+    timedelta,
 )
 import time
 
@@ -308,3 +324,32 @@ class Service(ServiceManagementService):
             log.error('Asynchronous operation did not succeed.')
             return False
         return True
+
+    # ---------------------------------------- call ---------------------------------------- #
+
+    def query_async_operation(self, request_id):
+        result = self.get_operation_status(request_id)
+        exec_time = datetime.now() + timedelta(seconds=ASYNC_TICK)
+        if result.status == self.IN_PROGRESS:
+            pass
+        elif result.status == self.SUCCEEDED:
+            pass
+        else:
+            pass
+
+    def query_deployment_status(self, cloud_service_name, deployment_name):
+        result = self.get_deployment_by_name(cloud_service_name, deployment_name)
+        exec_time = datetime.now() + timedelta(seconds=DEPLOYMENT_TICK)
+        if result.status == ADStatus.RUNNING:
+            pass
+        else:
+            pass
+
+    def query_virtual_machine_status(self, cloud_service_name, deployment_name, virtual_machine_name, status):
+        deployment = self.get_deployment_by_name(cloud_service_name, deployment_name)
+        result = self.get_virtual_machine_instance_status(deployment, virtual_machine_name)
+        exec_time = datetime.now() + timedelta(seconds=VIRTUAL_MACHINE_TICK)
+        if result == status:
+            pass
+        else:
+            pass

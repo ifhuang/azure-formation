@@ -12,6 +12,9 @@ from src.azureformation.azureoperation.utility import (
     contain_azure_storage_account,
     delete_azure_storage_account,
 )
+from src.azureformation.scheduler import (
+    scheduler,
+)
 from src.azureformation.log import (
     log,
 )
@@ -20,6 +23,9 @@ from src.azureformation.enum import (
     ALOperation,
     ALStatus,
     ASAStatus,
+)
+from src.azureformation.functions import (
+    call,
 )
 
 
@@ -82,23 +88,7 @@ class StorageAccount:
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 0)
                 log.error(e)
                 return False
-            # make sure async operation succeed
-            if not self.service.wait_for_async(result.request_id, ASYNC_TICK, ASYNC_LOOP):
-                m = self.CREATE_STORAGE_ACCOUNT_ERROR[3] % (STORAGE_ACCOUNT, name)
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 3)
-                log.error(m)
-                return False
-            # make sure storage account exist
-            if not self.service.storage_account_exists(name):
-                m = self.CREATE_STORAGE_ACCOUNT_ERROR[4] % (STORAGE_ACCOUNT, name)
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 4)
-                log.error(m)
-                return False
-            else:
-                m = self.CREATE_STORAGE_ACCOUNT_INFO[0] % (STORAGE_ACCOUNT, name)
-                commit_azure_storage_account(name, description, label, location, ASAStatus.ONLINE, experiment)
-                commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 0)
-                log.debug(m)
+            
         else:
             # check whether storage account created by azure formation before
             if contain_azure_storage_account(name):
@@ -110,6 +100,28 @@ class StorageAccount:
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 2)
             log.debug(m)
         return True
+
+    def create_storage_account_async_true(self, experiment, template_unit):
+        name = template_unit.get_storage_account_name()
+        description = template_unit.get_storage_account_description()
+        label = template_unit.get_storage_account_label()
+        location = template_unit.get_storage_account_location()
+        # make sure storage account exist
+        if not self.service.storage_account_exists(name):
+            m = self.CREATE_STORAGE_ACCOUNT_ERROR[4] % (STORAGE_ACCOUNT, name)
+            commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 4)
+            log.error(m)
+        else:
+            m = self.CREATE_STORAGE_ACCOUNT_INFO[0] % (STORAGE_ACCOUNT, name)
+            commit_azure_storage_account(name, description, label, location, ASAStatus.ONLINE, experiment)
+            commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 0)
+            log.debug(m)
+
+    def create_storage_account_async_false(self, experiment, template_unit):
+        name = template_unit.get_storage_account_name()
+        m = self.CREATE_STORAGE_ACCOUNT_ERROR[3] % (STORAGE_ACCOUNT, name)
+        commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 3)
+        log.error(m)
 
     # todo update storage account
     def update_storage_account(self):

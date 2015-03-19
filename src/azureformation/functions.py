@@ -7,6 +7,7 @@ from src.azureformation.log import (
     log,
 )
 import json
+import importlib
 
 
 def get_config(key):
@@ -31,3 +32,13 @@ def load_template(url):
         log.error(e)
         return None
     return template
+
+
+def call(call, cls_args, func_args):
+    mdl_name = call[0]
+    cls_name = call[1]
+    func_name = call[2]
+    mdl = importlib.import_module(mdl_name)
+    cls = getattr(mdl, cls_name)
+    func = getattr(cls(*cls_args), func_name)
+    func(*func_args)
