@@ -6,24 +6,21 @@ from src.azureformation.enum import (
 from src.azureformation.log import (
     log,
 )
-from src.azureformation.functions import (
-    call,
-)
 from src.azureformation.azureoperation.utility import (
     ASYNC_TICK,
     DEPLOYMENT_TICK,
     VIRTUAL_MACHINE_TICK,
-    CALL,
+    MDL_CLS_FUNC,
+    run_job,
 )
-from src.azureformation.scheduler import (
-    scheduler,
+from src.azureformation.database import (
+    db_adapter,
+)
+from src.azureformation.database.models import (
+    AzureKey,
 )
 from azure.servicemanagement import (
     ServiceManagementService,
-)
-from datetime import (
-    datetime,
-    timedelta,
 )
 import time
 
@@ -37,8 +34,10 @@ class Service(ServiceManagementService):
     NOT_FOUND = 'Not found (Not Found)'
     NETWORK_CONFIGURATION = 'NetworkConfiguration'
 
-    def __init__(self, subscription_id, pem_url, management_host):
-        super(Service, self).__init__(subscription_id, pem_url, management_host)
+    def __init__(self, azure_key_id):
+        self.azure_key_id = azure_key_id
+        azure_key = db_adapter.get_object(AzureKey, self.azure_key_id)
+        super(Service, self).__init__(azure_key.subscription_id, azure_key.pem_url, azure_key.management_host)
 
     # ---------------------------------------- subscription ---------------------------------------- #
 
@@ -327,19 +326,24 @@ class Service(ServiceManagementService):
 
     # ---------------------------------------- call ---------------------------------------- #
 
-    def query_async_operation(self, request_id):
+    def query_async_operation_status(self, request_id,
+                                     true_mdl_cls_func, true_cls_args, true_func_args,
+                                     false_mdl_cls_func, false_cls_args, false_func_args):
         result = self.get_operation_status(request_id)
-        exec_time = datetime.now() + timedelta(seconds=ASYNC_TICK)
         if result.status == self.IN_PROGRESS:
-            pass
+            run_job(MDL_CLS_FUNC[2],
+                    (self.azure_key_id, ),
+                    (request_id,
+                     true_mdl_cls_func, true_cls_args, true_func_args,
+                     false_mdl_cls_func, false_cls_args, false_func_args),
+                    ASYNC_TICK)
         elif result.status == self.SUCCEEDED:
-            pass
+            run_job(true_mdl_cls_func, true_cls_args, true_func_args)
         else:
-            pass
+            run_job(false_mdl_cls_func, false_cls_args, false_func_args)
 
     def query_deployment_status(self, cloud_service_name, deployment_name):
         result = self.get_deployment_by_name(cloud_service_name, deployment_name)
-        exec_time = datetime.now() + timedelta(seconds=DEPLOYMENT_TICK)
         if result.status == ADStatus.RUNNING:
             pass
         else:
@@ -348,7 +352,6 @@ class Service(ServiceManagementService):
     def query_virtual_machine_status(self, cloud_service_name, deployment_name, virtual_machine_name, status):
         deployment = self.get_deployment_by_name(cloud_service_name, deployment_name)
         result = self.get_virtual_machine_instance_status(deployment, virtual_machine_name)
-        exec_time = datetime.now() + timedelta(seconds=VIRTUAL_MACHINE_TICK)
         if result == status:
             pass
         else:

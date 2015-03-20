@@ -3,18 +3,13 @@ __author__ = 'Yifu Huang'
 from src.azureformation.azureoperation.templateFramework import (
     TemplateFramework,
 )
-from src.azureformation.azureoperation.storageAccount import (
-    StorageAccount,
-)
-from src.azureformation.azureoperation.cloudService import (
-    CloudService,
-)
-from src.azureformation.azureoperation.virtualMachine import (
-    VirtualMachine,
+from src.azureformation.azureoperation.utility import (
+    MDL_CLS_FUNC,
+    run_job,
 )
 
 
-class AzureFormation():
+class AzureFormation:
     """
     Azure cloud service management
     For logic: besides resources created by this program itself, it can reuse other storage,
@@ -24,15 +19,13 @@ class AzureFormation():
     Notice: It requires exclusive access when Azure performs an async operation on a deployment
     """
 
-    def __init__(self, service):
-        self.service = service
-        self.storage_account = StorageAccount(self.service)
-        self.cloud_service = CloudService(self.service)
-        self.virtual_machine = VirtualMachine(self.service)
+    def __init__(self, azure_key_id):
+        self.azure_key_id = azure_key_id
 
     def create(self, experiment):
         template_framework = TemplateFramework(experiment)
         for template_unit in template_framework.get_template_units():
-            self.storage_account.create_storage_account(experiment, template_unit)
-            self.cloud_service.create_cloud_service(experiment, template_unit)
-            self.virtual_machine.create_virtual_machine(experiment, template_unit)
+            # create storage account
+            run_job(MDL_CLS_FUNC[0],
+                    (self.azure_key_id, ),
+                    (experiment, template_unit))

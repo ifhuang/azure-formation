@@ -1,7 +1,7 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureoperation.subscription import (
-    Subscription,
+from src.azureformation.azureoperation.resourceBase import(
+    ResourceBase,
 )
 from src.azureformation.azureoperation.utility import (
     AZURE_FORMATION,
@@ -21,7 +21,7 @@ from src.azureformation.enum import (
 )
 
 
-class CloudService:
+class CloudService(ResourceBase):
     """
     Cloud service is used as DNS for azure virtual machines
     """
@@ -38,9 +38,8 @@ class CloudService:
     ]
     NEED_COUNT = 1
 
-    def __init__(self, service):
-        self.service = service
-        self.subscription = Subscription(service)
+    def __init__(self, azure_key_id):
+        super(CloudService, self).__init__(azure_key_id)
 
     def create_cloud_service(self, experiment, template_unit):
         """

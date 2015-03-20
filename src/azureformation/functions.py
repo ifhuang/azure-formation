@@ -34,10 +34,10 @@ def load_template(url):
     return template
 
 
-def call(call, cls_args, func_args):
-    mdl_name = call[0]
-    cls_name = call[1]
-    func_name = call[2]
+def call(mdl_cls_func, cls_args, func_args):
+    mdl_name = mdl_cls_func[0]
+    cls_name = mdl_cls_func[1]
+    func_name = mdl_cls_func[2]
     mdl = importlib.import_module(mdl_name)
     cls = getattr(mdl, cls_name)
     func = getattr(cls(*cls_args), func_name)

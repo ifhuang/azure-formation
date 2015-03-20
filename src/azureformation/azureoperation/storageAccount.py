@@ -1,19 +1,16 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureoperation.subscription import(
-    Subscription,
+from src.azureformation.azureoperation.resourceBase import(
+    ResourceBase,
 )
 from src.azureformation.azureoperation.utility import (
     AZURE_FORMATION,
-    ASYNC_TICK,
-    ASYNC_LOOP,
+    MDL_CLS_FUNC,
     commit_azure_log,
     commit_azure_storage_account,
     contain_azure_storage_account,
     delete_azure_storage_account,
-)
-from src.azureformation.scheduler import (
-    scheduler,
+    run_job,
 )
 from src.azureformation.log import (
     log,
@@ -24,12 +21,9 @@ from src.azureformation.enum import (
     ALStatus,
     ASAStatus,
 )
-from src.azureformation.functions import (
-    call,
-)
 
 
-class StorageAccount:
+class StorageAccount(ResourceBase):
     """
     Storage account is used by azure virtual machines to store their disks
     """
@@ -47,9 +41,8 @@ class StorageAccount:
     ]
     NEED_COUNT = 1
 
-    def __init__(self, service):
-        self.service = service
-        self.subscription = Subscription(service)
+    def __init__(self, azure_key_id):
+        super(StorageAccount, self).__init__(azure_key_id)
 
     def create_storage_account(self, experiment, template_unit):
         """
@@ -88,7 +81,12 @@ class StorageAccount:
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.FAIL, m, 0)
                 log.error(e)
                 return False
-            
+            # query async operation status
+            run_job(MDL_CLS_FUNC[2],
+                    (self.azure_key_id, ),
+                    (result.request_id,
+                     MDL_CLS_FUNC[3], (self.azure_key_id, ), (experiment, template_unit),
+                     MDL_CLS_FUNC[4], (self.azure_key_id, ), (experiment, template_unit)))
         else:
             # check whether storage account created by azure formation before
             if contain_azure_storage_account(name):
@@ -99,6 +97,8 @@ class StorageAccount:
                 commit_azure_storage_account(name, description, label, location, ASAStatus.ONLINE, experiment)
                 commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 2)
             log.debug(m)
+            # create cloud service
+            run_job(MDL_CLS_FUNC[1], (self.azure_key_id,), (experiment, template_unit))
         return True
 
     def create_storage_account_async_true(self, experiment, template_unit):
@@ -116,6 +116,8 @@ class StorageAccount:
             commit_azure_storage_account(name, description, label, location, ASAStatus.ONLINE, experiment)
             commit_azure_log(experiment, ALOperation.CREATE_STORAGE_ACCOUNT, ALStatus.END, m, 0)
             log.debug(m)
+            # create cloud service
+            run_job(MDL_CLS_FUNC[1], (self.azure_key_id,), (experiment, template_unit))
 
     def create_storage_account_async_false(self, experiment, template_unit):
         name = template_unit.get_storage_account_name()

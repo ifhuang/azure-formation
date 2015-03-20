@@ -15,13 +15,18 @@ from src.azureformation.database.models import (
 )
 from src.azureformation.functions import (
     load_template,
+    call,
 )
-from src.azureformation.azureoperation.service import (
-    Service,
+from src.azureformation.scheduler import (
+    scheduler,
 )
 from azure.servicemanagement import (
     ConfigurationSet,
     ConfigurationSetInputEndpoint,
+)
+from datetime import (
+    datetime,
+    timedelta,
 )
 # -------------------------------------------------- constants --------------------------------------------------#
 # project name
@@ -37,11 +42,15 @@ PORT_BOUND = 65536
 # endpoint constants
 ENDPOINT_PREFIX = 'AUTO-'
 ENDPOINT_PROTOCOL = 'TCP'
+# module base
+MDL_BASE = 'src.azureformation.azureoperation.'
 # module name, class name and function name
-CALL = [
-    [Service.__module__, Service.__name__, Service.query_async_operation.__name__],
-    [Service.__module__, Service.__name__, Service.query_deployment_status.__name__],
-    [Service.__module__, Service.__name__, Service.query_virtual_machine_status.__name__],
+MDL_CLS_FUNC = [
+    [MDL_BASE + 'storageAccount', 'StorageAccount', 'create_storage_account'],
+    [MDL_BASE + 'cloudService', 'CloudService', 'create_cloud_service'],
+    [MDL_BASE + 'service', 'Service', 'query_async_operation_status'],
+    [MDL_BASE + 'storageAccount', 'StorageAccount', 'create_storage_account_async_true'],
+    [MDL_BASE + 'storageAccount', 'StorageAccount', 'create_storage_account_async_false'],
 ]
 
 
@@ -286,3 +295,9 @@ def delete_endpoint_from_network_config(network_config, private_endpoints):
 def load_template_from_experiment(experiment):
     t = db_adapter.get_object(Template, experiment.template_id)
     return load_template(t.url)
+
+
+# --------------------------------------------- scheduler ---------------------------------------------#
+def run_job(mdl_cls_func, cls_args, func_args, second=3):
+    exec_time = datetime.now() + timedelta(seconds=second)
+    scheduler.add_job(call, 'date', run_date=exec_time, args=[mdl_cls_func, cls_args, func_args])

@@ -1,7 +1,7 @@
 __author__ = 'Yifu Huang'
 
-from src.azureformation.azureoperation.subscription import (
-    Subscription,
+from src.azureformation.azureoperation.resourceBase import(
+    ResourceBase,
 )
 from src.azureformation.azureoperation.utility import (
     AZURE_FORMATION,
@@ -44,7 +44,7 @@ import json
 
 # todo take care of resource check
 # todo support batch operations
-class VirtualMachine:
+class VirtualMachine(ResourceBase):
     """
     Virtual machine is azure virtual machine with its azure deployment
     """
@@ -138,9 +138,8 @@ class VirtualMachine:
     }
     VIRTUAL_MACHINE_NAME_BASE = '%s-%d'
 
-    def __init__(self, service):
-        self.service = service
-        self.subscription = Subscription(service)
+    def __init__(self, azure_key_id):
+        super(VirtualMachine, self).__init__(azure_key_id)
 
     def create_virtual_machine(self, experiment, template_unit):
         """
