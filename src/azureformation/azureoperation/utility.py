@@ -51,6 +51,7 @@ MDL_CLS_FUNC = [
     [MDL_BASE + 'service', 'Service', 'query_async_operation_status'],
     [MDL_BASE + 'storageAccount', 'StorageAccount', 'create_storage_account_async_true'],
     [MDL_BASE + 'storageAccount', 'StorageAccount', 'create_storage_account_async_false'],
+    [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'create_virtual_machine'],
 ]
 
 

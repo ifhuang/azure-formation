@@ -5,10 +5,12 @@ from src.azureformation.azureoperation.resourceBase import(
 )
 from src.azureformation.azureoperation.utility import (
     AZURE_FORMATION,
+    MDL_CLS_FUNC,
     commit_azure_log,
     commit_azure_cloud_service,
     contain_azure_cloud_service,
     delete_azure_cloud_service,
+    run_job,
 )
 from src.azureformation.log import (
     log,
@@ -98,6 +100,7 @@ class CloudService(ResourceBase):
                 commit_azure_cloud_service(name, label, location, ACSStatus.CREATED, experiment)
                 commit_azure_log(experiment, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.END, m, 2)
             log.debug(m)
+        run_job(MDL_CLS_FUNC[5], (self.azure_key_id, ), (experiment, template_unit))
         return True
 
     # todo update cloud service
