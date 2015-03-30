@@ -342,17 +342,27 @@ class Service(ServiceManagementService):
         else:
             run_job(false_mdl_cls_func, false_cls_args, false_func_args)
 
-    def query_deployment_status(self, cloud_service_name, deployment_name):
+    def query_deployment_status(self, cloud_service_name, deployment_name,
+                                true_mdl_cls_func, true_cls_args, true_func_args):
         result = self.get_deployment_by_name(cloud_service_name, deployment_name)
         if result.status == ADStatus.RUNNING:
-            pass
+            run_job(true_mdl_cls_func, true_cls_args, true_func_args)
         else:
-            pass
+            run_job(MDL_CLS_FUNC[15],
+                    (self.azure_key_id, ),
+                    (cloud_service_name, deployment_name,
+                     true_mdl_cls_func, true_cls_args, true_func_args),
+                    DEPLOYMENT_TICK)
 
-    def query_virtual_machine_status(self, cloud_service_name, deployment_name, virtual_machine_name, status):
+    def query_virtual_machine_status(self, cloud_service_name, deployment_name, virtual_machine_name, status,
+                                     true_mdl_cls_func, true_cls_args, true_func_args):
         deployment = self.get_deployment_by_name(cloud_service_name, deployment_name)
         result = self.get_virtual_machine_instance_status(deployment, virtual_machine_name)
         if result == status:
-            pass
+            run_job(true_mdl_cls_func, true_cls_args, true_func_args)
         else:
-            pass
+            run_job(MDL_CLS_FUNC[8],
+                    (self.azure_key_id, ),
+                    (cloud_service_name, deployment_name, virtual_machine_name, status,
+                     true_mdl_cls_func, true_cls_args, true_func_args),
+                    VIRTUAL_MACHINE_TICK)
