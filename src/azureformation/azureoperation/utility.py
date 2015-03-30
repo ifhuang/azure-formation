@@ -61,7 +61,7 @@ MDL_CLS_FUNC = [
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'create_virtual_machine_vm_true_2'],
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'create_virtual_machine_async_true_3'],
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'create_virtual_machine_async_false_3'],
-    [MDL_BASE + 'service', 'Service', 'query_virtual_machine_status'],
+    [MDL_BASE + 'service', 'Service', 'query_deployment_status'],
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'create_virtual_machine_dm_true'],
 ]
 
