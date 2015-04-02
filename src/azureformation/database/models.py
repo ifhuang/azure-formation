@@ -142,6 +142,11 @@ class Template(DBBase):
     url = Column(String(200))
     virtual_environment_count = Column(Integer)
 
+    def __init__(self, **kwargs):
+        super(Template, self).__init__(**kwargs)
+        if self.virtual_environment_count is None:
+            self.virtual_environment_count = 0
+
 
 class Experiment(DBBase):
     """

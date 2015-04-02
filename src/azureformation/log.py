@@ -27,7 +27,7 @@ class Log(object):
     def critical(self, critical):
         self.logger.critical(critical)
 
-# usage(make sure /var/log/azure-auto-deploy/ directory exists and accessible):
+# usage(make sure /var/log/azure-formation/ directory exists and accessible):
 # from log import log
 # log.info("some info")
 log = Log()

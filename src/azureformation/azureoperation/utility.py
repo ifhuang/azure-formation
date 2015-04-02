@@ -321,8 +321,9 @@ def load_template_from_experiment(experiment_id):
     return load_template(t.url)
 
 
-def set_template_virtual_environment_count(template, count):
-    template.virtual_environment_count = count
+def set_template_virtual_environment_count(experiment_id, count):
+    t = db_adapter.get_object(Template, experiment_id)
+    t.virtual_environment_count = count
     db_adapter.commit()
 
 

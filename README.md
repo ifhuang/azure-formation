@@ -48,7 +48,6 @@ GRANT ALL on azureformation.* TO 'azureformation'@'localhost';
 ```
 sudo pip install -r requirement.txt
 sudo python setup_db.py
-sudo python create_test_data.py
-sudo python main.py
-sudo python run.py
+sudo python loadExample.py
+sudo python callExample.py
 ```
