@@ -12,6 +12,7 @@ from src.azureformation.database.models import (
     AzureEndpoint,
     VirtualEnvironment,
     Template,
+    Experiment,
 )
 from src.azureformation.functions import (
     load_template,
@@ -67,9 +68,9 @@ MDL_CLS_FUNC = [
 
 
 # -------------------------------------------------- azure log --------------------------------------------------#
-def commit_azure_log(experiment, operation, status, note=None, code=None):
+def commit_azure_log(experiment_id, operation, status, note=None, code=None):
     db_adapter.add_object_kwargs(AzureLog,
-                                 experiment=experiment,
+                                 experiment_id=experiment_id,
                                  operation=operation,
                                  status=status,
                                  note=note,
@@ -78,14 +79,14 @@ def commit_azure_log(experiment, operation, status, note=None, code=None):
 
 
 # --------------------------------------------- azure storage account ---------------------------------------------#
-def commit_azure_storage_account(name, description, label, location, status, experiment):
+def commit_azure_storage_account(name, description, label, location, status, experiment_id):
     db_adapter.add_object_kwargs(AzureStorageAccount,
                                  name=name,
                                  description=description,
                                  label=label,
                                  location=location,
                                  status=status,
-                                 experiment=experiment)
+                                 experiment_id=experiment_id)
     db_adapter.commit()
 
 
@@ -99,13 +100,13 @@ def delete_azure_storage_account(name):
 
 
 # --------------------------------------------- azure cloud service ---------------------------------------------#
-def commit_azure_cloud_service(name, label, location, status, experiment):
+def commit_azure_cloud_service(name, label, location, status, experiment_id):
     db_adapter.add_object_kwargs(AzureCloudService,
                                  name=name,
                                  label=label,
                                  location=location,
                                  status=status,
-                                 experiment=experiment)
+                                 experiment_id=experiment_id)
     db_adapter.commit()
 
 
@@ -119,14 +120,14 @@ def delete_azure_cloud_service(name):
 
 
 # --------------------------------------------- azure deployment ---------------------------------------------#
-def commit_azure_deployment(name, slot, status, cloud_service_name, experiment):
+def commit_azure_deployment(name, slot, status, cloud_service_name, experiment_id):
     cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
     db_adapter.add_object_kwargs(AzureDeployment,
                                  name=name,
                                  slot=slot,
                                  status=status,
                                  cloud_service=cs,
-                                 experiment=experiment)
+                                 experiment_id=experiment_id)
     db_adapter.commit()
 
 
@@ -147,7 +148,7 @@ def delete_azure_deployment(cloud_service_name, deployment_slot):
 
 # --------------------------------------------- azure virtual machine ---------------------------------------------#
 def commit_azure_virtual_machine(name, label, status, dns, public_ip, private_ip,
-                                 cloud_service_name, deployment_name, experiment, virtual_environment):
+                                 cloud_service_name, deployment_name, experiment_id, virtual_environment):
     cs = db_adapter.find_first_object_by(AzureCloudService, name=cloud_service_name)
     dm = db_adapter.find_first_object_by(AzureDeployment, name=deployment_name, cloud_service=cs)
     vm = db_adapter.add_object_kwargs(AzureVirtualMachine,
@@ -158,7 +159,7 @@ def commit_azure_virtual_machine(name, label, status, dns, public_ip, private_ip
                                       public_ip=public_ip,
                                       private_ip=private_ip,
                                       deployment=dm,
-                                      experiment=experiment,
+                                      experiment_id=experiment_id,
                                       virtual_environment=virtual_environment)
     db_adapter.commit()
     return vm
@@ -232,7 +233,7 @@ def find_unassigned_endpoints(endpoints, assigned_endpoints):
 
 
 # --------------------------------------------- virtual environment ---------------------------------------------#
-def commit_virtual_environment(provider, name, image, status, remote_provider, remote_paras, experiment):
+def commit_virtual_environment(provider, name, image, status, remote_provider, remote_paras, experiment_id):
     ve = db_adapter.add_object_kwargs(VirtualEnvironment,
                                       provider=provider,
                                       name=name,
@@ -240,7 +241,7 @@ def commit_virtual_environment(provider, name, image, status, remote_provider, r
                                       status=status,
                                       remote_provider=remote_provider,
                                       remote_paras=remote_paras,
-                                      experiment=experiment)
+                                      experiment_id=experiment_id)
     db_adapter.commit()
     return ve
 
@@ -304,8 +305,9 @@ def delete_endpoint_from_network_config(network_config, private_endpoints):
 
 
 # --------------------------------------------- template ---------------------------------------------#
-def load_template_from_experiment(experiment):
-    t = db_adapter.get_object(Template, experiment.template_id)
+def load_template_from_experiment(experiment_id):
+    e = db_adapter.get_object(Experiment, experiment_id)
+    t = db_adapter.get_object(Template, e.template_id)
     return load_template(t.url)
 
 

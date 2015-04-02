@@ -34,7 +34,7 @@ db_adapter.commit()
 # start
 db_adapter.update_object(e, status=EStatus.Starting)
 db_adapter.commit()
-af.create(e)
+af.create(e.id)
 
 while True:
     time.sleep(10)

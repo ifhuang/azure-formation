@@ -22,10 +22,10 @@ class AzureFormation:
     def __init__(self, azure_key_id):
         self.azure_key_id = azure_key_id
 
-    def create(self, experiment):
-        template_framework = TemplateFramework(experiment)
+    def create(self, experiment_id):
+        template_framework = TemplateFramework(experiment_id)
         for template_unit in template_framework.get_template_units():
             # create storage account
             run_job(MDL_CLS_FUNC[0],
                     (self.azure_key_id, ),
-                    (experiment, template_unit))
+                    (experiment_id, template_unit))
