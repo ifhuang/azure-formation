@@ -21,6 +21,10 @@ from src.azureformation.functions import (
 from src.azureformation.scheduler import (
     scheduler,
 )
+from src.azureformation.enum import (
+    ALStatus,
+    EStatus,
+)
 from azure.servicemanagement import (
     ConfigurationSet,
     ConfigurationSetInputEndpoint,
@@ -77,6 +81,8 @@ def commit_azure_log(experiment_id, operation, status, note=None, code=None):
                                  note=note,
                                  code=code)
     db_adapter.commit()
+    if status == ALStatus.FAIL:
+        update_experiment_status(experiment_id, EStatus.Failed)
 
 
 # --------------------------------------------- azure storage account ---------------------------------------------#
@@ -312,7 +318,25 @@ def load_template_from_experiment(experiment_id):
     return load_template(t.url)
 
 
+def set_template_virtual_environment_count(template, count):
+    template.virtual_environment_count = count
+    db_adapter.commit()
+
+
 # --------------------------------------------- scheduler ---------------------------------------------#
 def run_job(mdl_cls_func, cls_args, func_args, second=DEFAULT_TICK):
     exec_time = datetime.now() + timedelta(seconds=second)
     scheduler.add_job(call, 'date', run_date=exec_time, args=[mdl_cls_func, cls_args, func_args])
+
+
+# --------------------------------------------- experiment ---------------------------------------------#
+def update_experiment_status(experiment_id, status):
+    e = db_adapter.get_object(Experiment, experiment_id)
+    e.status = status
+    db_adapter.commit()
+
+
+def check_experiment_done(experiment_id):
+    e = db_adapter.get_object(Experiment, experiment_id)
+    if db_adapter.count_by(VirtualEnvironment, experiment_id=experiment_id) == e.template.virtual_environment_count:
+        update_experiment_status(experiment_id, EStatus.Running)

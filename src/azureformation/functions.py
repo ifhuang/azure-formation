@@ -7,7 +7,7 @@ from src.azureformation.log import (
     log,
 )
 import json
-import importlib
+import importlibset_template_virtual_environment_count
 
 
 def get_config(key):

@@ -13,7 +13,7 @@ from apscheduler.schedulers.background import (
 )
 from apscheduler.events import (
     EVENT_JOB_EXECUTED,
-    EVENT_JOB_ERROR
+    EVENT_JOB_ERROR,
 )
 import os
 

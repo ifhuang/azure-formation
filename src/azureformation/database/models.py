@@ -140,6 +140,7 @@ class Template(DBBase):
 
     id = Column(Integer, primary_key=True)
     url = Column(String(200))
+    virtual_environment_count = Column(Integer)
 
 
 class Experiment(DBBase):
