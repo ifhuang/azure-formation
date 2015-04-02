@@ -24,6 +24,7 @@ from src.azureformation.scheduler import (
 from src.azureformation.enum import (
     ALStatus,
     EStatus,
+    ALOperation,
 )
 from azure.servicemanagement import (
     ConfigurationSet,
@@ -83,6 +84,8 @@ def commit_azure_log(experiment_id, operation, status, note=None, code=None):
     db_adapter.commit()
     if status == ALStatus.FAIL:
         update_experiment_status(experiment_id, EStatus.Failed)
+    elif status == ALStatus.END and operation == ALOperation.CREATE_VIRTUAL_MACHINE:
+        check_experiment_done(experiment_id)
 
 
 # --------------------------------------------- azure storage account ---------------------------------------------#
