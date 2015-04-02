@@ -65,6 +65,7 @@ MDL_CLS_FUNC = [
     [MDL_BASE + 'service', 'Service', 'query_deployment_status'],
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'create_virtual_machine_dm_true'],
 ]
+DEFAULT_TICK = 3
 
 
 # -------------------------------------------------- azure log --------------------------------------------------#
@@ -312,6 +313,6 @@ def load_template_from_experiment(experiment_id):
 
 
 # --------------------------------------------- scheduler ---------------------------------------------#
-def run_job(mdl_cls_func, cls_args, func_args, second=3):
+def run_job(mdl_cls_func, cls_args, func_args, second=DEFAULT_TICK):
     exec_time = datetime.now() + timedelta(seconds=second)
     scheduler.add_job(call, 'date', run_date=exec_time, args=[mdl_cls_func, cls_args, func_args])

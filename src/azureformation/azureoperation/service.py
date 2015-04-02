@@ -329,8 +329,10 @@ class Service(ServiceManagementService):
     def query_async_operation_status(self, request_id,
                                      true_mdl_cls_func, true_cls_args, true_func_args,
                                      false_mdl_cls_func, false_cls_args, false_func_args):
+        log.debug('query async operation status: request_id [%s]' % request_id)
         result = self.get_operation_status(request_id)
         if result.status == self.IN_PROGRESS:
+            # query async operation status
             run_job(MDL_CLS_FUNC[2],
                     (self.azure_key_id, ),
                     (request_id,
@@ -344,10 +346,12 @@ class Service(ServiceManagementService):
 
     def query_deployment_status(self, cloud_service_name, deployment_name,
                                 true_mdl_cls_func, true_cls_args, true_func_args):
+        log.debug('query deployment status: deployment_name [%s]' % deployment_name)
         result = self.get_deployment_by_name(cloud_service_name, deployment_name)
         if result.status == ADStatus.RUNNING:
             run_job(true_mdl_cls_func, true_cls_args, true_func_args)
         else:
+            # query deployment status
             run_job(MDL_CLS_FUNC[15],
                     (self.azure_key_id, ),
                     (cloud_service_name, deployment_name,
@@ -356,11 +360,13 @@ class Service(ServiceManagementService):
 
     def query_virtual_machine_status(self, cloud_service_name, deployment_name, virtual_machine_name, status,
                                      true_mdl_cls_func, true_cls_args, true_func_args):
+        log.debug('query virtual machine status: virtual_machine_name [%s]' % virtual_machine_name)
         deployment = self.get_deployment_by_name(cloud_service_name, deployment_name)
         result = self.get_virtual_machine_instance_status(deployment, virtual_machine_name)
         if result == status:
             run_job(true_mdl_cls_func, true_cls_args, true_func_args)
         else:
+            # query virtual machine status
             run_job(MDL_CLS_FUNC[8],
                     (self.azure_key_id, ),
                     (cloud_service_name, deployment_name, virtual_machine_name, status,

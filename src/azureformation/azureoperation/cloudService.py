@@ -100,6 +100,7 @@ class CloudService(ResourceBase):
                 commit_azure_cloud_service(name, label, location, ACSStatus.CREATED, experiment_id)
                 commit_azure_log(experiment_id, ALOperation.CREATE_CLOUD_SERVICE, ALStatus.END, m, 2)
             log.debug(m)
+        # create virtual machine
         run_job(MDL_CLS_FUNC[5], (self.azure_key_id, ), (experiment_id, template_unit))
         return True
 

@@ -258,6 +258,7 @@ class VirtualMachine(ResourceBase):
         deployment_name = self.service.get_deployment_name(cloud_service_name, deployment_slot)
         virtual_machine_name = self.VIRTUAL_MACHINE_NAME_BASE % (template_unit.get_virtual_machine_name(),
                                                                  experiment_id)
+        # query virtual machine status
         run_job(MDL_CLS_FUNC[8],
                 (self.azure_key_id, ),
                 (cloud_service_name, deployment_name, virtual_machine_name, AVMStatus.READY_ROLE,
@@ -298,6 +299,7 @@ class VirtualMachine(ResourceBase):
         deployment_name = self.service.get_deployment_name(cloud_service_name, deployment_slot)
         virtual_machine_name = self.VIRTUAL_MACHINE_NAME_BASE % (template_unit.get_virtual_machine_name(),
                                                                  experiment_id)
+        # query virtual machine status
         run_job(MDL_CLS_FUNC[8],
                 (self.azure_key_id, ),
                 (cloud_service_name, deployment_name, virtual_machine_name, AVMStatus.READY_ROLE,
@@ -317,6 +319,7 @@ class VirtualMachine(ResourceBase):
     def create_virtual_machine_async_true_3(self, experiment_id, template_unit):
         cloud_service_name = template_unit.get_cloud_service_name()
         deployment_name = template_unit.get_deployment_name()
+        # query deployment status
         run_job(MDL_CLS_FUNC[15],
                 (self.azure_key_id, ),
                 (cloud_service_name, deployment_name,
@@ -348,12 +351,14 @@ class VirtualMachine(ResourceBase):
                                 experiment_id)
         commit_azure_log(experiment_id, ALOperation.CREATE_DEPLOYMENT, ALStatus.END, m, 0)
         log.debug(m)
+        # query virtual machine status
         run_job(MDL_CLS_FUNC[8],
                 (self.azure_key_id, ),
                 (cloud_service_name, deployment_name, virtual_machine_name, AVMStatus.READY_ROLE,
                  MDL_CLS_FUNC[9], (self.azure_key_id, ), (experiment_id, template_unit)),
                 VIRTUAL_MACHINE_TICK)
 
+    # todo make stop_virtual_machine async
     def stop_virtual_machine(self, experiment_id, cloud_service_name, deployment_name, virtual_machine_name, action):
         """
         0. Prerequisites: a. virtual machine exist in both azure and database
@@ -434,6 +439,7 @@ class VirtualMachine(ResourceBase):
             log.debug(m)
         return True
 
+    # todo make start_virtual_machine async
     def start_virtual_machine(self, experiment_id, cloud_service_name, deployment_name, virtual_machine_name):
         """
         0. Prerequisites: a. virtual machine exist in both azure and database
