@@ -31,11 +31,13 @@ def date_serializer(date):
     return long((date - datetime(1970, 1, 1)).total_seconds() * 1000)
 
 
-def to_json(inst, cls):
+def to_dic(inst, cls):
     # add your coversions for things like datetime's
     # and what-not that aren't serializable.
     convert = dict()
     convert[DateTime] = date_serializer
+
+    # todo datatime
     d = dict()
     for c in cls.__table__.columns:
         v = getattr(inst, c.name)
@@ -45,11 +47,15 @@ def to_json(inst, cls):
                 d[c.name] = func(v)
             except:
                 d[c.name] = "Error:  Failed to covert using ", str(convert[c.type.__class__])
-        elif v is None:
-            d[c.name] = str()
+        # elif v is None:
+        # d[c.name] = str()
         else:
             d[c.name] = v
-    return json.dumps(d)
+    return d
+
+
+def to_json(inst, cls):
+    return json.dumps(to_dic(inst, cls))
 
 
 class DBBase(Base):
@@ -60,6 +66,9 @@ class DBBase(Base):
 
     def __init__(self, **kwargs):
         super(DBBase, self).__init__(**kwargs)
+
+    def dic(self):
+        return to_dic(self, self.__class__)
 
     def json(self):
         return to_json(self, self.__class__)
