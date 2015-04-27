@@ -1,5 +1,7 @@
 __author__ = 'Yifu Huang'
 
+import time
+
 from src.azureformation.database import (
     db_adapter,
 )
@@ -13,10 +15,10 @@ from src.azureformation.database.models import (
 from src.azureformation.enum import (
     EStatus,
 )
-from src.azureformation.azureFormation import (
+from src.azureformation.azureoperation.azureFormation import (
     AzureFormation,
 )
-import time
+
 
 # init
 t = db_adapter.find_first_object(Template)

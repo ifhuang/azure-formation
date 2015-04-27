@@ -13,4 +13,7 @@ Config = {
         "job_store": "mysql",
         "job_store_url": 'mysql://%s:%s@%s/%s' % (MYSQL_USER, MYSQL_PWD, MYSQL_HOST, MYSQL_DB)
     },
+    "azure": {
+        "certBase": "/home/if/If/azure-formation/src/azureformation/certificates"
+    },
 }
