@@ -21,7 +21,7 @@ from src.azureformation.azureoperation.azureFormation import (
 )
 
 
-#init
+# init
 t = db_adapter.find_first_object(Template)
 u = db_adapter.find_first_object(User)
 h = db_adapter.find_first_object(Hackathon)
@@ -41,12 +41,8 @@ af = AzureFormation(ha.azure_key_id)
 
 # stop
 # af.stop(81, AVMStatus.STOPPED)
-af.stop(81, AVMStatus.STOPPED_DEALLOCATED)
+# af.stop(81, AVMStatus.STOPPED_DEALLOCATED)
 
 while True:
     time.sleep(10)
     print 'callExample'
-
-# end
-db_adapter.update_object(e, status=EStatus.Running)
-db_adapter.commit()
