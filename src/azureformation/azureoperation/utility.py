@@ -74,6 +74,7 @@ MDL_CLS_FUNC = [
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'stop_virtual_machine_async_true'],
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'stop_virtual_machine_async_false'],
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'stop_virtual_machine_vm_true'],
+    [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'start_virtual_machine'],
 ]
 DEFAULT_TICK = 3
 
@@ -90,10 +91,10 @@ def commit_azure_log(experiment_id, operation, status, note=None, code=None):
     if status == ALStatus.FAIL:
         update_experiment_status(experiment_id, EStatus.Failed)
     elif status == ALStatus.END:
-        if operation == ALOperation.CREATE_VIRTUAL_MACHINE:
-            check_experiment_done(experiment_id, EStatus.Running)
-        elif operation == ALOperation.STOP_VIRTUAL_MACHINE:
-            check_experiment_done(experiment_id, EStatus.Stopped)
+        need_status = EStatus.Running
+        if operation == ALOperation.STOP_VIRTUAL_MACHINE:
+            need_status = EStatus.Stopped
+        check_experiment_done(experiment_id, need_status)
 
 
 # --------------------------------------------- azure storage account ---------------------------------------------#
@@ -216,8 +217,13 @@ def update_azure_virtual_machine_status(cloud_service_name, deployment_name, vir
     return vm
 
 
-def update_virtual_environment_private_ip(virtual_machine, private_ip):
+def update_azure_virtual_machine_private_ip(virtual_machine, private_ip):
     virtual_machine.private_ip = private_ip
+    db_adapter.commit()
+
+
+def update_azure_virtual_machine_public_ip(virtual_machine, public_ip):
+    virtual_machine.public_ip = public_ip
     db_adapter.commit()
 
 
@@ -267,6 +273,12 @@ def commit_virtual_environment(provider, name, image, status, remote_provider, r
 def update_virtual_environment_status(virtual_machine, status):
     ve = virtual_machine.virtual_environment
     ve.status = status
+    db_adapter.commit()
+
+
+def update_virtual_environment_remote_paras(virtual_machine, remote_paras):
+    ve = virtual_machine.virtual_environment
+    ve.status = remote_paras
     db_adapter.commit()
 
 

@@ -22,8 +22,10 @@ from src.azureformation.azureoperation.utility import (
     delete_azure_virtual_machine,
     get_azure_virtual_machine_status,
     update_azure_virtual_machine_status,
+    update_azure_virtual_machine_public_ip,
+    update_azure_virtual_machine_private_ip,
     update_virtual_environment_status,
-    update_virtual_environment_private_ip,
+    update_virtual_environment_remote_paras,
     run_job,
 )
 from src.azureformation.enum import (
@@ -397,10 +399,7 @@ class VirtualMachine(ResourceBase):
                                                          virtual_machine_name,
                                                          need_status,
                                                          AZURE_FORMATION)
-                self.__stop_virtual_machine_helper(cloud_service_name,
-                                                   deployment_name,
-                                                   virtual_machine_name,
-                                                   need_status)
+                self.__stop_virtual_machine_helper(experiment_id, template_unit, need_status)
                 commit_azure_log(experiment_id, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.END, m, 2)
             log.debug(m)
         else:
@@ -448,27 +447,26 @@ class VirtualMachine(ResourceBase):
         deployment_name = self.service.get_deployment_name(cloud_service_name, deployment_slot)
         virtual_machine_name = self.VIRTUAL_MACHINE_NAME_BASE % (template_unit.get_virtual_machine_name(),
                                                                  experiment_id)
-        self.__stop_virtual_machine_helper(cloud_service_name,
-                                           deployment_name,
-                                           virtual_machine_name,
-                                           need_status)
+        self.__stop_virtual_machine_helper(experiment_id, template_unit, need_status)
         m = self.STOP_VIRTUAL_MACHINE_INFO[0] % (VIRTUAL_MACHINE, virtual_machine_name, need_status)
         commit_azure_log(experiment_id, ALOperation.STOP_VIRTUAL_MACHINE, ALStatus.END, m, 0)
         log.debug(m)
 
-    # todo make start_virtual_machine async
-    def start_virtual_machine(self, experiment_id, cloud_service_name, deployment_name, virtual_machine_name):
+    def start_virtual_machine(self, experiment_id, template_unit):
         """
         0. Prerequisites: a. virtual machine exist in both azure and database
                           b. input parameters are correct
         :param experiment_id:
-        :param cloud_service_name:
-        :param deployment_name:
-        :param virtual_machine_name:
+        :param template_unit:
         :return:
         """
         commit_azure_log(experiment_id, ALOperation.START_VIRTUAL_MACHINE, ALStatus.START)
+        cloud_service_name = template_unit.get_cloud_service_name()
+        deployment_slot = template_unit.get_deployment_slot()
+        deployment_name = self.service.get_deployment_name(cloud_service_name, deployment_slot)
         deployment = self.service.get_deployment_by_name(cloud_service_name, deployment_name)
+        virtual_machine_name = self.VIRTUAL_MACHINE_NAME_BASE % (template_unit.get_virtual_machine_name(),
+                                                                 experiment_id)
         status = self.service.get_virtual_machine_instance_status(deployment, virtual_machine_name)
         if status == AVMStatus.READY_ROLE:
             db_status = get_azure_virtual_machine_status(cloud_service_name, deployment_name, virtual_machine_name)
@@ -570,43 +568,57 @@ class VirtualMachine(ResourceBase):
         commit_azure_log(experiment_id, ALOperation.CREATE_VIRTUAL_MACHINE, ALStatus.END, m, 0)
         log.debug(m)
 
-    def __stop_virtual_machine_helper(self,
-                                      cloud_service_name,
-                                      deployment_name,
-                                      virtual_machine_name,
-                                      need_status):
+    def __stop_virtual_machine_helper(self, experiment_id, template_unit, need_status):
         """
         Update status of azure virtual machine and virtual environment
-        :param cloud_service_name:
-        :param deployment_name:
-        :param virtual_machine_name:
+        :param experiment_id:
+        :param template_unit:
         :param need_status:
         :return:
         """
+        cloud_service_name = template_unit.get_cloud_service_name()
+        deployment_slot = template_unit.get_deployment_slot()
+        deployment_name = self.service.get_deployment_name(cloud_service_name, deployment_slot)
+        virtual_machine_name = self.VIRTUAL_MACHINE_NAME_BASE % (template_unit.get_virtual_machine_name(),
+                                                                 experiment_id)
         virtual_machine = update_azure_virtual_machine_status(cloud_service_name,
                                                               deployment_name,
                                                               virtual_machine_name,
                                                               need_status)
         update_virtual_environment_status(virtual_machine, VEStatus.Stopped)
 
-    def __start_virtual_machine_helper(self,
-                                       cloud_service_name,
-                                       deployment_name,
-                                       virtual_machine_name):
+    def __start_virtual_machine_helper(self, experiment_id, template_unit):
         """
         Update status of azure virtual machine and virtual environment
         Update private ip of azure virtual machine
-        :param cloud_service_name:
-        :param deployment_name:
-        :param virtual_machine_name:
+        :param experiment_id:
+        :param template_unit:
         :return:
         """
+        cloud_service_name = template_unit.get_cloud_service_name()
+        deployment_slot = template_unit.get_deployment_slot()
+        deployment_name = self.service.get_deployment_name(cloud_service_name, deployment_slot)
+        virtual_machine_name = self.VIRTUAL_MACHINE_NAME_BASE % (template_unit.get_virtual_machine_name(),
+                                                                 experiment_id)
         virtual_machine = update_azure_virtual_machine_status(cloud_service_name,
                                                               deployment_name,
                                                               virtual_machine_name,
                                                               AVMStatus.READY_ROLE)
-        update_virtual_environment_status(virtual_machine, VEStatus.Running)
+        public_ip = self.service.get_virtual_machine_public_ip(cloud_service_name,
+                                                               deployment_name,
+                                                               virtual_machine_name)
+        update_azure_virtual_machine_public_ip(virtual_machine, public_ip)
         private_ip = self.service.get_virtual_machine_private_ip(cloud_service_name,
                                                                  deployment_name,
                                                                  virtual_machine_name)
-        update_virtual_environment_private_ip(virtual_machine, private_ip)
+        update_azure_virtual_machine_private_ip(virtual_machine, private_ip)
+        update_virtual_environment_status(virtual_machine, VEStatus.Running)
+        remote_port_name = template_unit.get_remote_port_name()
+        remote_port = self.service.get_virtual_machine_public_endpoint(cloud_service_name,
+                                                                       deployment_name,
+                                                                       virtual_machine_name,
+                                                                       remote_port_name)
+        remote_paras = template_unit.get_remote_paras(virtual_machine_name,
+                                                      public_ip,
+                                                      remote_port)
+        update_virtual_environment_remote_paras(virtual_machine, remote_paras)
