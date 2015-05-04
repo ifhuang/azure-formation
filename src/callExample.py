@@ -43,6 +43,9 @@ af = AzureFormation(ha.azure_key_id)
 # af.stop(81, AVMStatus.STOPPED)
 # af.stop(81, AVMStatus.STOPPED_DEALLOCATED)
 
+# start
+# af.start(81)
+
 while True:
     time.sleep(10)
     print 'callExample'

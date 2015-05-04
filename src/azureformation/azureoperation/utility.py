@@ -75,6 +75,9 @@ MDL_CLS_FUNC = [
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'stop_virtual_machine_async_false'],
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'stop_virtual_machine_vm_true'],
     [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'start_virtual_machine'],
+    [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'start_virtual_machine_async_true'],
+    [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'start_virtual_machine_async_false'],
+    [MDL_BASE + 'virtualMachine', 'VirtualMachine', 'start_virtual_machine_vm_true'],
 ]
 DEFAULT_TICK = 3
 
@@ -278,7 +281,7 @@ def update_virtual_environment_status(virtual_machine, status):
 
 def update_virtual_environment_remote_paras(virtual_machine, remote_paras):
     ve = virtual_machine.virtual_environment
-    ve.status = remote_paras
+    ve.remote_paras = remote_paras
     db_adapter.commit()
 
 
