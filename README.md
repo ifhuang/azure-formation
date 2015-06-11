@@ -11,9 +11,9 @@
 
 ## How
 - Azure Formation uses Json based templates to describe Azure resources.
-> a template consists of a list of virtual environments, and a virtual environment is a virtual machine with its storage account, container, cloud service and deployment
+  - a template consists of a list of virtual environments, and a virtual environment is a virtual machine with its storage account, container, cloud service and deployment
 - It creates, updates or deletes Azure resources asynchronously in templates according to users' requests.
-> besides resources created by Azure Formation, it can reuse other storage, container, cloud service and deployment exist in Azure (by sync them into database)
+  - besides resources created by Azure Formation, it can reuse other storage, container, cloud service and deployment exist in Azure (by sync them into database)
 
 # Usage
 
@@ -49,13 +49,13 @@ sudo python azure-formation/src/setup_db.py
 ### Configure Credentials
 create azure-formation/src/azureformation/credentials.py and add following constants
 ```
-CERT_CERTIFICATE='local url to Azure cert file'
-PEM_CERTIFICATE='local url to Azure pem file'
-SUBSCRIPTION_ID='Azure subscription id'
-MANAGEMENT_HOST='Azure management host'
-USER_NAME='your name'
-HACKATHON_NAME='hackathon name'
-TEMPLATE_URL='local url to template file'
+CERT_CERTIFICATE = 'local url to Azure cert file'
+PEM_CERTIFICATE = 'local url to Azure pem file'
+SUBSCRIPTION_ID = 'Azure subscription id'
+MANAGEMENT_HOST = 'Azure management host'
+USER_NAME = 'your name'
+HACKATHON_NAME = 'hackathon name'
+TEMPLATE_URL = 'local url to template file'
 ```
 
 ## Demo
