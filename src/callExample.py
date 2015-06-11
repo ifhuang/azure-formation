@@ -28,16 +28,16 @@ h = db_adapter.find_first_object(Hackathon)
 ha = db_adapter.find_first_object_by(HackathonAzureKey, hackathon=h)
 af = AzureFormation(ha.azure_key_id)
 
-# # start
-# e = db_adapter.add_object_kwargs(Experiment,
-#                                  status=EStatus.Init,
-#                                  template=t,
-#                                  user=u,
-#                                  hackathon=h)
-# db_adapter.commit()
-# db_adapter.update_object(e, status=EStatus.Starting)
-# db_adapter.commit()
-# af.create(e.id)
+# create
+e = db_adapter.add_object_kwargs(Experiment,
+                                 status=EStatus.Init,
+                                 template=t,
+                                 user=u,
+                                 hackathon=h)
+db_adapter.commit()
+db_adapter.update_object(e, status=EStatus.Starting)
+db_adapter.commit()
+af.create(e.id)
 
 # stop
 # af.stop(81, AVMStatus.STOPPED)
