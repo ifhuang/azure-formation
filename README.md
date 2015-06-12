@@ -17,36 +17,35 @@
 
 # Usage
 
-## Precondition
-### Install MySQL
+## Install MySQL
 ```
 sudo apt-get install mysql-server libmysqlclient-dev
 ```
-### Configure MySQL
+## Configure MySQL
 enter MySQL Console
 ```
 create database azureformation;
 create User 'azureformation'@'localhost' IDENTIFIED by 'azureformation';
 GRANT ALL on azureformation.* TO 'azureformation'@'localhost';
 ```
-### Install Python
+## Install Python
 ```
 sudo apt-get install python python-dev python-setuptools
 sudo easy_install pip
 ```
-### Configure Logs
+## Configure Logs
 ```
 sudo mkdir /var/log/azure-formation
 sudo chown $USER:$USER /var/log/azure-formation
 ```
-### Install Azure Formation
+## Install Azure Formation
 ```
 sudo apt-get install git
 git clone https://github.com/ifhuang/azure-formation.git
 sudo pip install -r azure-formation/requirement.txt
 sudo python azure-formation/src/setup_db.py
 ```
-### Configure Credentials
+## Configure Credentials
 create azure-formation/src/azureformation/credentials.py and add following constants
 ```
 CERT_CERTIFICATE = 'local url to Azure cert file'
@@ -57,13 +56,11 @@ USER_NAME = 'your name'
 HACKATHON_NAME = 'hackathon name'
 TEMPLATE_URL = 'local url to template file'
 ```
-
 ## Demo
 ```
 sudo python loadExample.py
 sudo python callExample.py
 ```
-
 ## Other
 - sample template: azure-formation/src/azureformation/resources/test-template-1.js
 - db schema: azure-formation/db.pdf
