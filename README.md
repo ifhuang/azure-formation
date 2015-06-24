@@ -65,5 +65,5 @@ sudo python loadExample.py
 sudo python callExample.py
 ```
 ## Other
-- sample template: azure-formation/src/azureformation/resources/test-template-1.js
-- db schema: azure-formation/db.pdf
+- [sample template](https://github.com/ifhuang/azure-formation/blob/master/src/azureformation/resources/test-template-1.js)
+- [db schema](https://github.com/ifhuang/azure-formation/blob/master/db.pdf)
